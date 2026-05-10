@@ -1,0 +1,61 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Virtual environments
+venv/
+.venv/
+env/
+
+# Environment
+.env
+!.env.example
+
+# ML Models & Data (large binary files — use S3/MLflow instead)
+ml/pytorch/saved_models/*.pt
+ml/tensorflow/saved_models/
+*.onnx
+*.pkl
+data/
+
+# MLflow
+mlflow.db
+mlruns/
+
+# Jupyter
+.ipynb_checkpoints/
+notebooks/.ipynb_checkpoints/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Coverage
+coverage.xml
+.coverage
+htmlcov/
+
+# Terraform state (store in S3 backend, not git)
+infra/terraform/.terraform/
+infra/terraform/*.tfstate
+infra/terraform/*.tfstate.backup
+infra/terraform/.terraform.lock.hcl
+
+# Kubernetes secrets (never commit secrets)
+infra/helm/**/secrets.yaml
