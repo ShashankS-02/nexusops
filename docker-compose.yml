@@ -1,0 +1,59 @@
+name: nexusops
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: nexusops_postgres
+    environment:
+      POSTGRES_USER: nexusops
+      POSTGRES_PASSWORD: nexusops
+      POSTGRES_DB: nexusops
+    ports:
+      - "5432:5432"
+    volumes:
+      - nexusops_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U nexusops"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: nexusops_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - nexusops_redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  mlflow:
+    image: ghcr.io/mlflow/mlflow:v2.19.0
+    container_name: nexusops_mlflow
+    ports:
+      - "5001:5000"
+    environment:
+      MLFLOW_BACKEND_STORE_URI: sqlite:///mlflow.db
+      MLFLOW_ARTIFACT_ROOT: /mlflow/artifacts
+    volumes:
+      - nexusops_mlflow:/mlflow
+    command: mlflow server --host 0.0.0.0 --port 5000 --backend-store-uri sqlite:///mlflow/mlflow.db --default-artifact-root /mlflow/artifacts
+
+  qdrant:
+    image: qdrant/qdrant:v1.8.4
+    container_name: nexusops_qdrant
+    ports:
+      - "6333:6333"
+      - "6334:6334"
+    volumes:
+      - nexusops_qdrant:/qdrant/storage
+
+volumes:
+  nexusops_pgdata:
+  nexusops_redisdata:
+  nexusops_mlflow:
+  nexusops_qdrant:
