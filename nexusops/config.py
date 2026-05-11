@@ -41,7 +41,7 @@ class Settings:
     APP_ENV: str = os.getenv("APP_ENV", "development")
     LOG_LEVEL: str = os.getenv("LOG_LEVEL", "INFO")
     SENTINEL_ANOMALY_THRESHOLD: float = float(
-        os.getenv("SENTINEL_ANOMALY_THRESHOLD", "0.85")
+        os.getenv("SENTINEL_ANOMALY_THRESHOLD", "0.60")
     )
     HUMAN_APPROVAL_REQUIRED: bool = (
         os.getenv("HUMAN_APPROVAL_REQUIRED", "true").lower() == "true"
@@ -65,7 +65,7 @@ class Settings:
         "PYTORCH_MODEL_PATH", "ml/pytorch/saved_models/lstm_autoencoder.pt"
     )
     TF_MODEL_PATH: str = os.getenv(
-        "TF_MODEL_PATH", "ml/tensorflow/saved_models/log_classifier"
+        "TF_MODEL_PATH", "ml/tensorflow/saved_models/log_classifier_dense.keras"
     )
 
 

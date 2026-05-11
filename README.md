@@ -118,7 +118,7 @@ python -m supervisor.run
 ## 📊 Phases
 
 - [x] **Phase 1** — Foundation: PyTorch + TensorFlow models, FastAPI, local simulator
-- [ ] **Phase 2** — Multi-Agent: Full LangGraph graph with all 5 agents
+- [x] **Phase 2** — Multi-Agent: Full LangGraph graph with all 5 agents
 - [ ] **Phase 3** — Cloud: EKS, RDS, Vertex AI, Terraform
 - [ ] **Phase 4** — CI/CD: GitHub Actions, MLflow, model A/B testing
 - [ ] **Phase 5** — Polish: Dashboard, demo video, blog post
