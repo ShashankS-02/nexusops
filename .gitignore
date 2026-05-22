@@ -59,3 +59,12 @@ infra/terraform/.terraform.lock.hcl
 
 # Kubernetes secrets (never commit secrets)
 infra/helm/**/secrets.yaml
+
+# Runtime artifacts
+nexusops_checkpoints.db
+
+# Scratch / experiments
+src/
+
+#Claude
+.claude/

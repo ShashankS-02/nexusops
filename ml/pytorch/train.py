@@ -138,7 +138,7 @@ def train(
     lr: float = typer.Option(1e-3, help="Learning rate"),
     dropout: float = typer.Option(0.2, help="Dropout rate"),
     patience: int = typer.Option(5, help="Early stopping patience (epochs)"),
-    anomaly_threshold: float = typer.Option(0.85, help="Anomaly score threshold"),
+    anomaly_threshold: float = typer.Option(0.60, help="Anomaly score threshold"),
 ):
     """Train the LSTM Autoencoder anomaly detection model."""
 

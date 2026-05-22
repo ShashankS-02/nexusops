@@ -62,7 +62,7 @@ class Settings:
 
     # Model paths
     PYTORCH_MODEL_PATH: str = os.getenv(
-        "PYTORCH_MODEL_PATH", "ml/pytorch/saved_models/lstm_autoencoder.pt"
+        "PYTORCH_MODEL_PATH", "ml/pytorch/saved_models/lstm_autoencoder_best.pt"
     )
     TF_MODEL_PATH: str = os.getenv(
         "TF_MODEL_PATH", "ml/tensorflow/saved_models/log_classifier_dense.keras"

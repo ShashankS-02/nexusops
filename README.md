@@ -1,13 +1,14 @@
 ## Why I Built This
+
 I'm Shashank Shandilya, a software engineer working on production-grade agentic database support systems.
 
 I built NexusOps to demonstrate end-to-end AI engineering skills: from training
 custom PyTorch models to orchestrating multi-agent workflows with LangGraph
 and deploying on Kubernetes with full CI/CD.
 
-The problem space (autonomous SRE) genuinely interests me because in my current organisation I see multiple teams working on migrating databases from on premises to cloud environments. This process is biring up new challenges and concerns. I believe that an agentic system like this can help solve these problems more efficiently and effectively. Additionally I am very interested in the intersect of AI and DevOps and wanted to explore this space further.
+The problem space (autonomous SRE) genuinely interests me because in my current organisation I see multiple teams working on migrating databases from on premises to cloud environments. This process is bringing up new challenges and concerns. I often see multiple teams escalating issues related to this to the DBA team and the production readiness team and there is always a need for more support. I believe that an agentic system like this can help solve these problems more efficiently and effectively. Additionally I am very interested in the intersect of AI and DevOps and wanted to explore this space further.
 
-# 🚀 NexusOps — Autonomous AI Site Reliability Engineer
+# 🚀 NexusOps - Autonomous AI Site Reliability Engineer
 
 > An autonomous multi-agent system that monitors cloud infrastructure, detects anomalies, diagnoses root causes, proposes fixes, and executes remediation actions with human approval.
 
@@ -23,36 +24,52 @@ The problem space (autonomous SRE) genuinely interests me because in my current 
 ## 🧠 Architecture
 
 ```
-                    ┌─────────────────────────────────────────────┐
-                    │          NEXUSOPS SUPERVISOR AGENT           │
-                    │          (LangGraph StateGraph)              │
-                    │   Receives alerts → routes → synthesizes     │
-                    └──────────────┬──────────────────────────────┘
+   ┌────────────────────────────────────────────────────────────────────────┐
+   │                         NEXUSOPS SUPERVISOR                            │
+   │                        (LangGraph StateGraph)                          │
+   └────────────────────────────────────────────────────────────────────────┘
                                    │
-          ┌────────────┬───────────┼───────────┬────────────┐
-          ▼            ▼           ▼           ▼            ▼
-   ┌─────────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────────┐
-   │  SENTINEL   │ │DETECTIVE │ │ ORACLE   │ │ SURGEON  │ │  SCRIBE      │
-   │  AGENT      │ │  AGENT   │ │  AGENT   │ │  AGENT   │ │  AGENT       │
-   │             │ │          │ │          │ │          │ │              │
-   │Monitors     │ │Root cause│ │Predicts  │ │Executes  │ │Generates     │
-   │metrics with │ │analysis  │ │future    │ │approved  │ │post-incident │
-   │PyTorch LSTM │ │via RAG   │ │failures  │ │remediatio│ │reports &     │
-   │anomaly      │ │(LangChain│ │LSTM model│ │n actions │ │runbooks      │
-   │detection    │ │+ pgvector│ │          │ │(dry-run) │ │(pgvector)    │
-   └─────────────┘ └──────────┘ └──────────┘ └──────────┘ └──────────────┘
+                  --------------------------------------------------
+                 |              SENTINAL                            |
+                 |      Trained on 5,000 synthetic sequences        |
+                 | AUROC: 0.9933, Precision: 1.00 at threshold 0.60 |
+                 |                                                  |
+                 ---------------------------------------------------
+                       ┌───────────┘
+                       ▼
+              ┌─────────────┐   ┌──────────┐   ┌───────────┐
+              │  DETECTIVE  |-->|  ORACLE  |-->|  SURGEON  |
+              │ (Root Cause)│   │ (Predict)│   │(Remediate)│
+              └─────────────┘   └──────────┘   └───────────┘
+                                                     │
+                                     ┌---------------┘
+                                     │
+                                     ▼
+                            ┌──────────────────┐
+                            │  HUMAN APPROVAL  │
+                            │(interrupt_before)│
+                            └──────────────────┘
+                                    |
+                        ┌───────────┼───────────┐
+                        ▼           ▼           ▼
+               ┌──────────┐   ┌──────────┐   ┌──────────────┐
+               │ SURGEON' │   │  SURGEON'│   │   SCRIBE     │
+               │ (execute)│   │ (failure)│   │ (Report)     │
+               └──────────┘   └──────────┘   └──────────────┘
+                                      │
+                                      ▼
+                                    [END]
 ```
 
 ## 📦 Tech Stack
 
-| Layer | Technologies |
-|---|---|
-| **AI / ML** | PyTorch, TensorFlow/Keras, Hugging Face, LangChain, LangGraph |
-| **Cloud** | AWS (EKS, S3, ECR, RDS, CloudWatch), GCP (Vertex AI, BigQuery) |
-| **Infrastructure** | Kubernetes, Docker, Terraform, Helm |
-| **MLOps** | MLflow, LangSmith, Prometheus, Grafana |
-| **CI/CD** | GitHub Actions |
-| **Backend** | FastAPI, Redis, PostgreSQL + pgvector, Qdrant |
+| Layer       | Technologies                                                                                             |
+| ----------- | -------------------------------------------------------------------------------------------------------- |
+| **AI / ML** | PyTorch 2.x, TensorFlow/Keras 2.16, LangChain, LangGraph                                                 |
+| **LLMs**    | OpenAI GPT-4o-mini, Groq Llama-3.3-70b                                                                   |
+| **MLOps**   | MLflow, LangSmith, Prometheus                                                                            |
+| **Backend** | FastAPI, Redis, PostgreSQL + pgvector, Qdrant, HuggingFace Sentence Transformers, SQLite (checkpointing) |
+| **DevOps**  | Docker, Docker Compose                                                                                   |
 
 ## 🗂️ Project Structure
 
@@ -70,13 +87,9 @@ nexusops/
 │   └── tensorflow/            # Log pattern classifier
 ├── simulator/                 # Synthetic metrics & log generator
 ├── api/                       # FastAPI gateway
-├── infra/                     # Terraform & Helm charts
-│   ├── terraform/
-│   └── helm/
 ├── .github/workflows/         # CI/CD pipelines
 ├── docker/                    # Dockerfiles per service
-├── tests/                     # Unit + integration tests
-└── notebooks/                 # Jupyter exploration notebooks
+└── tests/                     # Unit + integration tests
 ```
 
 ## 🚀 Quick Start (Phase 1 — Local)
@@ -115,14 +128,66 @@ uvicorn api.main:app --reload --port 8000
 python -m supervisor.run
 ```
 
+## Example Output
+
+A real incident run `payment-service` in `prod` with CPU at 97%, memory at 91%, latency at 5860ms, error rate at 20.5%.
+
+**Sentinel detects the anomaly:**
+
+> PyTorch LSTM anomaly score: **0.784** (threshold 0.60) -> incident `15460a2f` created, LangGraph pipeline triggered
+
+**Detective (root cause analysis):**
+
+> "The payment-service pod is likely experiencing a high error rate due to a software bug or misconfiguration, causing it to fail requests and trigger the HighErrorRate metric. This is also driving increased CPU and memory usage, as well as request latency."
+
+**Blast radius:**
+
+> "If left unaddressed, this could impact order processing, user accounts, and customer support — potentially leading to failed transactions and revenue loss."
+
+**Surgeon proposes 3 remediation actions — pipeline pauses for human approval:**
+
+> 1. `[MEDIUM RISK]` `kubectl rollout undo deployment payment-service -n prod` - rollback to last known good version
+> 2. `[LOW RISK]` `kubectl scale deployment payment-service --replicas=2 -n prod` - scale out to absorb load
+> 3. `[LOW RISK]` `kubectl delete pod -l app=payment-service -n prod` - force pod restart to clear transient state
+
+**Human approves actions 1 & 2 via API:**
+
+```bash
+curl -X POST http://localhost:8000/api/v1/incidents/15460a2f/approve \
+  -d '{"approved": true, "approver": "on-call-engineer", "approved_action_indices": [0, 1]}'
+```
+
+**Scribe generates post mortem (stored in Qdrant for future RAG lookups):**
+
+```
+# Incident Report: 15460a2f
+## Summary
+payment-service / prod - anomaly score 0.784 — triggered metrics:
+cpu_usage_percent, memory_usage_percent, request_latency_ms, error_rate_percent
+
+## Root Cause
+Software bug or misconfiguration caused a high error rate, which in turn drove
+elevated CPU/memory usage and request latency. Confidence: 80%.
+
+## Impact
+Order processing, user accounts, and customer support — potential revenue impact
+if not resolved within ~30 minutes of trigger time.
+
+## Remediation
+1. kubectl rollout undo deployment payment-service -n prod  [EXECUTED]
+2. kubectl scale deployment payment-service --replicas=2 -n prod  [EXECUTED]
+
+## Prevention
+- Add automated rollback policy for HighErrorRate > 15% sustained over 5 minutes
+- Set HPA min-replicas to 2 for payment-service to prevent single-pod bottleneck
+- Integrate canary deploys to catch regressions before full rollout
+```
+
 ## 📊 Phases
 
 - [x] **Phase 1** — Foundation: PyTorch + TensorFlow models, FastAPI, local simulator
 - [x] **Phase 2** — Multi-Agent: Full LangGraph graph with all 5 agents
-- [ ] **Phase 3** — Cloud: EKS, RDS, Vertex AI, Terraform
-- [ ] **Phase 4** — CI/CD: GitHub Actions, MLflow, model A/B testing
-- [ ] **Phase 5** — Polish: Dashboard, demo video, blog post
 
 ---
 
-*Built as a capstone project to demonstrate production-grade AI engineering skills.*
+_Built as a capstone project to demonstrate production-grade AI engineering skills._
