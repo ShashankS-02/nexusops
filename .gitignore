@@ -66,9 +66,6 @@ nexusops_checkpoints.db
 # Scratch / experiments
 src/
 
-#Claude
-.claude/
-
 #Gif creation
 /scripts
 *.tape
