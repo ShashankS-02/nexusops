@@ -16,6 +16,7 @@ Features (5 per time step):
   [cpu_usage_percent, memory_usage_percent, request_latency_ms,
    error_rate_percent, network_io_kbps]
 """
+
 from __future__ import annotations
 
 import torch
@@ -26,7 +27,7 @@ from torch import Tensor
 class LSTMEncoder(nn.Module):
     """
     Encodes a metric sequence into a compact latent representation.
-    
+
     Args:
         input_size:  Number of features per time step (default: 5)
         hidden_size: LSTM hidden state dimension
@@ -49,7 +50,7 @@ class LSTMEncoder(nn.Module):
             input_size=input_size,
             hidden_size=hidden_size,
             num_layers=num_layers,
-            batch_first=True,          # input shape: (batch, seq_len, features)
+            batch_first=True,  # input shape: (batch, seq_len, features)
             dropout=dropout if num_layers > 1 else 0.0,
         )
 
@@ -83,7 +84,7 @@ class LSTMDecoder(nn.Module):
         self.num_layers = num_layers
 
         self.lstm = nn.LSTM(
-            input_size=hidden_size,    # decoder input is encoder hidden states
+            input_size=hidden_size,  # decoder input is encoder hidden states
             hidden_size=hidden_size,
             num_layers=num_layers,
             batch_first=True,
@@ -191,7 +192,7 @@ class LSTMAutoencoder(nn.Module):
         )
 
     @classmethod
-    def load(cls, path: str, device: str = "cpu") -> "LSTMAutoencoder":
+    def load(cls, path: str, device: str = "cpu") -> LSTMAutoencoder:
         """Load a saved model."""
         checkpoint = torch.load(path, map_location=device)
         config = checkpoint["config"]

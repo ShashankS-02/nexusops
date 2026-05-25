@@ -18,17 +18,17 @@ Fusion Strategy:
   in the numerical metrics that are more reliable than keyword-based
   log classification for detecting subtle anomalies.
 """
+
 from __future__ import annotations
 
 import os
 from pathlib import Path
-from typing import Optional
 
 import numpy as np
 
+from ml.pytorch.dataset import metric_to_vector
 from nexusops.config import settings
 from nexusops.models import MetricPoint
-from ml.pytorch.dataset import metric_to_vector
 
 
 class SentinelDetector:
@@ -53,8 +53,8 @@ class SentinelDetector:
         pytorch_path = Path(settings.PYTORCH_MODEL_PATH)
         if pytorch_path.exists():
             try:
-                import torch
                 from ml.pytorch.model import LSTMAutoencoder
+
                 self._pytorch_model = LSTMAutoencoder.load(str(pytorch_path))
                 self._pytorch_model.eval()
                 print(f"  ✓ PyTorch model loaded from {pytorch_path}")
@@ -66,6 +66,7 @@ class SentinelDetector:
         if tf_path.exists():
             try:
                 import tensorflow as tf
+
                 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
                 self._tf_model = tf.keras.models.load_model(str(tf_path))
                 print(f"  ✓ TensorFlow model loaded from {tf_path}")
@@ -104,11 +105,13 @@ class SentinelDetector:
             fused = self._heuristic_score(window)
 
         fused = float(np.clip(fused, 0.0, 1.0))
-        
+
         # Debug log if there is any interesting activity
         if fused > 0.1:
-            print(f"[\U0001f50e Sentinel] {window[-1].pod_name} | PyTorch: {pytorch_score:.3f} | TF: {tf_score:.3f} | Fused: {fused:.3f} | Threshold: {settings.SENTINEL_ANOMALY_THRESHOLD}")
-            
+            print(
+                f"[\U0001f50e Sentinel] {window[-1].pod_name} | PyTorch: {pytorch_score:.3f} | TF: {tf_score:.3f} | Fused: {fused:.3f} | Threshold: {settings.SENTINEL_ANOMALY_THRESHOLD}"
+            )
+
         return fused
 
     def _pytorch_score(self, window: list[MetricPoint]) -> float:

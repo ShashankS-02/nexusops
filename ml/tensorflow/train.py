@@ -9,14 +9,15 @@ Usage:
     python -m ml.tensorflow.train
     python -m ml.tensorflow.train --epochs 15 --model-type dense
 """
+
 from __future__ import annotations
 
 import os
+
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
 
 import random
 from pathlib import Path
-from typing import Literal
 
 import mlflow
 import mlflow.tensorflow
@@ -26,21 +27,21 @@ import tensorflow as tf
 # Force CPU training — macOS Metal GPU plugin crashes on string operations (TextVectorization)
 # Since the dataset is small, CPU training will be extremely fast anyway.
 try:
-    tf.config.set_visible_devices([], 'GPU')
+    tf.config.set_visible_devices([], "GPU")
 except Exception:
     pass
 
 import typer
 from rich.console import Console
 
-from nexusops.config import settings
-from simulator.generator import generate_log, PODS
 from ml.tensorflow.model import (
-    build_log_classifier, 
-    build_log_classifier_with_lstm, 
-    NUM_CLASSES, 
-    VOCAB_SIZE
+    NUM_CLASSES,
+    VOCAB_SIZE,
+    build_log_classifier,
+    build_log_classifier_with_lstm,
 )
+from nexusops.config import settings
+from simulator.generator import PODS, generate_log
 
 console = Console()
 app = typer.Typer()
@@ -50,6 +51,7 @@ LOG_WINDOW_SIZE = 50  # number of log entries per window
 
 
 # ── Dataset Generation ─────────────────────────────────────────────────────────
+
 
 def generate_log_dataset(
     n_normal: int = 3000,
@@ -78,7 +80,7 @@ def generate_log_dataset(
     # Class 0: NORMAL
     for _ in range(n_normal):
         logs = [generate_log(pod, anomaly=False) for _ in range(window_size)]
-        window_text = " [SEP] ".join(f"{l.level}: {l.message}" for l in logs)
+        window_text = " [SEP] ".join(f"{log.level}: {log.message}" for log in logs)
         texts.append(window_text)
         labels.append(0)
 
@@ -88,7 +90,7 @@ def generate_log_dataset(
         for _ in range(window_size):
             is_anomaly = random.random() < 0.3
             logs.append(generate_log(pod, anomaly=is_anomaly))
-        window_text = " [SEP] ".join(f"{l.level}: {l.message}" for l in logs)
+        window_text = " [SEP] ".join(f"{log.level}: {log.message}" for log in logs)
         texts.append(window_text)
         labels.append(1)
 
@@ -98,7 +100,7 @@ def generate_log_dataset(
         for _ in range(window_size):
             is_anomaly = random.random() < 0.85
             logs.append(generate_log(pod, anomaly=is_anomaly))
-        window_text = " [SEP] ".join(f"{l.level}: {l.message}" for l in logs)
+        window_text = " [SEP] ".join(f"{log.level}: {log.message}" for log in logs)
         texts.append(window_text)
         labels.append(2)
 
@@ -116,6 +118,7 @@ def generate_log_dataset(
 
 
 # ── Training ───────────────────────────────────────────────────────────────────
+
 
 @app.command()
 def train(
@@ -150,21 +153,19 @@ def train(
 
     # ── Build & Adapt Model ──────────────────────────────────────────────────
     console.print("[dim]Adapting text vectorizer...[/dim]")
-    
+
     if model_type == "dense":
         text_vectorizer = tf.keras.layers.TextVectorization(
-            max_tokens=VOCAB_SIZE, 
-            output_mode="tf_idf", 
-            name="text_vectorization"
+            max_tokens=VOCAB_SIZE, output_mode="tf_idf", name="text_vectorization"
         )
         text_vectorizer.adapt(X_train_tf)
         model = build_log_classifier(text_vectorizer, dropout_rate=dropout_rate)
     else:
         text_vectorizer = tf.keras.layers.TextVectorization(
-            max_tokens=VOCAB_SIZE, 
-            output_mode="int", 
-            output_sequence_length=200, 
-            name="text_vec_lstm"
+            max_tokens=VOCAB_SIZE,
+            output_mode="int",
+            output_sequence_length=200,
+            name="text_vec_lstm",
         )
         text_vectorizer.adapt(X_train_tf)
         model = build_log_classifier_with_lstm(text_vectorizer, dropout_rate=dropout_rate)
@@ -177,14 +178,16 @@ def train(
     mlflow.set_experiment("nexusops-log-classification")
 
     with mlflow.start_run(run_name=f"tf_{model_type}_e{epochs}"):
-        mlflow.log_params({
-            "model_type": model_type,
-            "epochs": epochs,
-            "batch_size": batch_size,
-            "dropout_rate": dropout_rate,
-            "tf_version": tf.__version__,
-            "num_classes": NUM_CLASSES,
-        })
+        mlflow.log_params(
+            {
+                "model_type": model_type,
+                "epochs": epochs,
+                "batch_size": batch_size,
+                "dropout_rate": dropout_rate,
+                "tf_version": tf.__version__,
+                "num_classes": NUM_CLASSES,
+            }
+        )
 
         # ── Keras Callbacks ──────────────────────────────────────────────────
         callbacks = [

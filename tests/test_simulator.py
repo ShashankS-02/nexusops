@@ -1,19 +1,20 @@
 """
 Tests for the Metrics Simulator
 """
-import pytest
-import numpy as np
+
 from datetime import datetime
 
+import numpy as np
+
+from nexusops.models import LogEntry, MetricPoint
 from simulator.generator import (
-    generate_normal_metric,
-    generate_cpu_spike,
-    generate_memory_leak,
-    generate_cascading_failure,
-    generate_log,
     PODS,
+    generate_cascading_failure,
+    generate_cpu_spike,
+    generate_log,
+    generate_memory_leak,
+    generate_normal_metric,
 )
-from nexusops.models import MetricPoint, LogEntry
 
 
 class TestNormalMetricGeneration:
@@ -73,14 +74,18 @@ class TestCpuSpikeScenario:
         """Spike CPU should be higher than normal CPU on average."""
         pod = PODS[0]
         normal_cpu = np.mean([generate_normal_metric(pod).cpu_usage_percent for _ in range(50)])
-        spike_cpu = np.mean([generate_cpu_spike(pod, intensity=0.8).cpu_usage_percent for _ in range(50)])
+        spike_cpu = np.mean(
+            [generate_cpu_spike(pod, intensity=0.8).cpu_usage_percent for _ in range(50)]
+        )
         assert spike_cpu > normal_cpu
 
     def test_latency_increases_with_cpu_spike(self):
         """CPU spike should also increase latency."""
         pod = PODS[0]
         normal_lat = np.mean([generate_normal_metric(pod).request_latency_ms for _ in range(50)])
-        spike_lat = np.mean([generate_cpu_spike(pod, intensity=1.0).request_latency_ms for _ in range(50)])
+        spike_lat = np.mean(
+            [generate_cpu_spike(pod, intensity=1.0).request_latency_ms for _ in range(50)]
+        )
         assert spike_lat > normal_lat
 
 
@@ -90,8 +95,12 @@ class TestMemoryLeakScenario:
     def test_memory_increases_with_elapsed_time(self):
         """Memory at t=300s should be higher than at t=0."""
         pod = PODS[0]
-        early = np.mean([generate_memory_leak(pod, elapsed_seconds=0).memory_usage_percent for _ in range(50)])
-        late = np.mean([generate_memory_leak(pod, elapsed_seconds=300).memory_usage_percent for _ in range(50)])
+        early = np.mean(
+            [generate_memory_leak(pod, elapsed_seconds=0).memory_usage_percent for _ in range(50)]
+        )
+        late = np.mean(
+            [generate_memory_leak(pod, elapsed_seconds=300).memory_usage_percent for _ in range(50)]
+        )
         assert late > early, f"Expected late memory ({late:.1f}%) > early ({early:.1f}%)"
 
     def test_memory_grows_monotonically(self):
@@ -114,18 +123,28 @@ class TestCascadingFailureScenario:
 
     def test_full_failure_has_high_error_rate(self):
         pod = PODS[0]
-        errors = [generate_cascading_failure(pod, failure_progress=0.95).error_rate_percent for _ in range(50)]
+        errors = [
+            generate_cascading_failure(pod, failure_progress=0.95).error_rate_percent
+            for _ in range(50)
+        ]
         assert np.mean(errors) > 20.0, "Full failure should have >20% error rate"
 
     def test_full_failure_has_high_latency(self):
         pod = PODS[0]
-        latencies = [generate_cascading_failure(pod, failure_progress=0.95).request_latency_ms for _ in range(50)]
+        latencies = [
+            generate_cascading_failure(pod, failure_progress=0.95).request_latency_ms
+            for _ in range(50)
+        ]
         assert np.mean(latencies) > 2000.0
 
     def test_early_failure_lower_than_late(self):
         pod = PODS[0]
-        early_errors = np.mean([generate_cascading_failure(pod, 0.1).error_rate_percent for _ in range(50)])
-        late_errors = np.mean([generate_cascading_failure(pod, 0.9).error_rate_percent for _ in range(50)])
+        early_errors = np.mean(
+            [generate_cascading_failure(pod, 0.1).error_rate_percent for _ in range(50)]
+        )
+        late_errors = np.mean(
+            [generate_cascading_failure(pod, 0.9).error_rate_percent for _ in range(50)]
+        )
         assert late_errors > early_errors
 
 
@@ -136,14 +155,14 @@ class TestLogGeneration:
         """Normal logs should predominantly be INFO level."""
         pod = PODS[0]
         logs = [generate_log(pod, anomaly=False) for _ in range(100)]
-        info_count = sum(1 for l in logs if l.level == "INFO")
+        info_count = sum(1 for log in logs if log.level == "INFO")
         assert info_count > 90, f"Expected >90 INFO logs, got {info_count}"
 
     def test_anomaly_log_has_errors(self):
         """Anomaly logs should be ERROR or CRITICAL level."""
         pod = PODS[0]
         logs = [generate_log(pod, anomaly=True) for _ in range(100)]
-        error_count = sum(1 for l in logs if l.level in ("ERROR", "CRITICAL", "WARN"))
+        error_count = sum(1 for log in logs if log.level in ("ERROR", "CRITICAL", "WARN"))
         assert error_count == 100, f"All anomaly logs should be error-level, got {error_count}"
 
     def test_log_returns_log_entry(self):

@@ -22,19 +22,20 @@ Design Notes:
   - Background task queue for agent graph execution
   - In-memory incident store (Phase 1 — PostgreSQL in Phase 3)
 """
+
 from __future__ import annotations
 
 import asyncio
 import uuid
 from collections import deque
 from contextlib import asynccontextmanager
-from datetime import datetime, timezone
-from typing import Any, Optional
+from datetime import UTC, datetime
+from typing import Any
 
-from fastapi import FastAPI, BackgroundTasks, HTTPException, Request
+from fastapi import BackgroundTasks, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, PlainTextResponse
-from prometheus_client import Counter, Histogram, generate_latest, CONTENT_TYPE_LATEST
+from fastapi.responses import PlainTextResponse
+from prometheus_client import CONTENT_TYPE_LATEST, Counter, Histogram, generate_latest
 from pydantic import BaseModel
 
 from nexusops.config import settings
@@ -42,7 +43,6 @@ from nexusops.models import (
     AnomalyAlert,
     Incident,
     IncidentStatus,
-    LogEntry,
     MetricPoint,
     Severity,
 )
@@ -84,6 +84,7 @@ background_tasks_queue: asyncio.Queue = asyncio.Queue()
 
 # ── Lifespan ───────────────────────────────────────────────────────────────────
 
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Startup and shutdown logic."""
@@ -91,6 +92,7 @@ async def lifespan(app: FastAPI):
     print("🚀 NexusOps API starting up...")
     try:
         from agents.sentinel.detector import SentinelDetector
+
         app.state.sentinel = SentinelDetector()
         print("  ✓ Sentinel detector loaded")
     except Exception as e:
@@ -127,28 +129,30 @@ app.add_middleware(
 
 # ── Request/Response Models ────────────────────────────────────────────────────
 
+
 class IngestionResponse(BaseModel):
     status: str
     pod_name: str
     anomaly_detected: bool
-    anomaly_score: Optional[float] = None
-    incident_id: Optional[str] = None
+    anomaly_score: float | None = None
+    incident_id: str | None = None
 
 
 class ApprovalRequest(BaseModel):
     approved: bool
     approver: str = "human"
-    reason: Optional[str] = None
+    reason: str | None = None
 
 
 # ── Health ─────────────────────────────────────────────────────────────────────
+
 
 @app.get("/api/v1/health", tags=["System"])
 async def health():
     """Kubernetes liveness/readiness probe."""
     return {
         "status": "healthy",
-        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "timestamp": datetime.now(UTC).isoformat(),
         "sentinel_loaded": app.state.sentinel is not None,
         "active_incidents": len(incidents),
         "metric_buffers": len(metric_buffer),
@@ -166,6 +170,7 @@ async def prometheus_metrics():
 
 # ── Metric Ingestion ───────────────────────────────────────────────────────────
 
+
 @app.post("/api/v1/metrics/ingest", response_model=IngestionResponse, tags=["Metrics"])
 async def ingest_metric(
     metric: MetricPoint,
@@ -179,6 +184,7 @@ async def ingest_metric(
     and the full LangGraph agent pipeline is triggered in the background.
     """
     import time
+
     start = time.monotonic()
 
     METRICS_INGESTED.labels(namespace=metric.namespace).inc()
@@ -276,7 +282,9 @@ async def _run_agent_pipeline(incident_id: str) -> None:
         incident.proposed_actions = graph_state.get("proposed_actions", [])
         incident.status = IncidentStatus.AWAITING_APPROVAL
 
-        print(f"  [Incident {incident_id}] Paused — awaiting human approval at /api/v1/incidents/{incident_id}/approve")
+        print(
+            f"  [Incident {incident_id}] Paused — awaiting human approval at /api/v1/incidents/{incident_id}/approve"
+        )
 
     except Exception as e:
         print(f"  [Incident {incident_id}] Pipeline error: {e}")
@@ -284,6 +292,7 @@ async def _run_agent_pipeline(incident_id: str) -> None:
 
 
 # ── Alert Webhook ──────────────────────────────────────────────────────────────
+
 
 @app.post("/api/v1/alerts/webhook", tags=["Alerts"])
 async def receive_alert_webhook(
@@ -329,8 +338,9 @@ async def receive_alert_webhook(
 
 # ── Incident Management ────────────────────────────────────────────────────────
 
+
 @app.get("/api/v1/incidents", tags=["Incidents"])
-async def list_incidents(status: Optional[str] = None):
+async def list_incidents(status: str | None = None):
     """List all incidents, optionally filtered by status."""
     result = list(incidents.values())
     if status:
@@ -390,21 +400,27 @@ async def _execute_approved_actions(incident_id: str) -> None:
         return
     try:
         from supervisor.graph import resume_graph
+
         graph_state = await resume_graph(
             incident_id=incident_id,
             approved=True,
-            approver=incident.approved_actions[0].get("approver", "human") if incident.approved_actions else "human",
+            approver=incident.approved_actions[0].get("approver", "human")
+            if incident.approved_actions
+            else "human",
         )
         incident.executed_actions = graph_state.get("executed_actions", [])
         incident.incident_report = graph_state.get("incident_report")
         incident.status = IncidentStatus.RESOLVED
-        print(f"  [Incident {incident_id}] Resolved. Report generated. Stored in Qdrant: {graph_state.get('report_stored_in_qdrant', False)}")
+        print(
+            f"  [Incident {incident_id}] Resolved. Report generated. Stored in Qdrant: {graph_state.get('report_stored_in_qdrant', False)}"
+        )
     except Exception as e:
         print(f"  [Incident {incident_id}] Resume error: {e}")
         incident.status = IncidentStatus.OPEN
 
 
 # ── Metric Buffer Inspection ───────────────────────────────────────────────────
+
 
 @app.get("/api/v1/metrics/buffer", tags=["Metrics"])
 async def inspect_buffer():
@@ -419,6 +435,7 @@ async def inspect_buffer():
 
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
+
 
 def _score_to_severity(score: float) -> Severity:
     if score > 0.95:

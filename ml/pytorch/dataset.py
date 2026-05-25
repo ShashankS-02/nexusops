@@ -11,26 +11,22 @@ Handles:
 Usage:
     python -m ml.pytorch.dataset --generate --output data/metrics_normal.npy
 """
+
 from __future__ import annotations
 
-import math
-import os
 import random
-from pathlib import Path
-from typing import Optional
 
 import numpy as np
 import torch
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import DataLoader, Dataset
 
 from simulator.generator import (
-    generate_normal_metric,
+    PODS,
+    generate_cascading_failure,
     generate_cpu_spike,
     generate_memory_leak,
-    generate_cascading_failure,
-    PODS,
+    generate_normal_metric,
 )
-
 
 # ── Feature Extraction ────────────────────────────────────────────────────────
 
@@ -48,18 +44,22 @@ FEATURE_SCALES = [100.0, 100.0, 10000.0, 100.0, 100000.0]
 
 def metric_to_vector(metric) -> np.ndarray:
     """Convert a MetricPoint to a normalized numpy feature vector."""
-    raw = np.array([
-        metric.cpu_usage_percent,
-        metric.memory_usage_percent,
-        metric.request_latency_ms,
-        metric.error_rate_percent,
-        metric.network_io_kbps,
-    ], dtype=np.float32)
+    raw = np.array(
+        [
+            metric.cpu_usage_percent,
+            metric.memory_usage_percent,
+            metric.request_latency_ms,
+            metric.error_rate_percent,
+            metric.network_io_kbps,
+        ],
+        dtype=np.float32,
+    )
     scales = np.array(FEATURE_SCALES, dtype=np.float32)
     return raw / scales  # scale to [0, 1]
 
 
 # ── Synthetic Dataset Generation ──────────────────────────────────────────────
+
 
 def generate_synthetic_dataset(
     n_normal_sequences: int = 5000,
@@ -101,21 +101,15 @@ def generate_synthetic_dataset(
         anomaly_seqs.append(seq)
 
     # Memory leaks
-    for i in range(anomaly_per_type):
+    for _i in range(anomaly_per_type):
         elapsed = random.uniform(60, 600)
-        seq = [
-            metric_to_vector(generate_memory_leak(pod, elapsed + j * 2))
-            for j in range(seq_len)
-        ]
+        seq = [metric_to_vector(generate_memory_leak(pod, elapsed + j * 2)) for j in range(seq_len)]
         anomaly_seqs.append(seq)
 
     # Cascading failures
     for _ in range(n_anomaly_sequences - 2 * anomaly_per_type):
         progress = random.uniform(0.3, 1.0)
-        seq = [
-            metric_to_vector(generate_cascading_failure(pod, progress))
-            for _ in range(seq_len)
-        ]
+        seq = [metric_to_vector(generate_cascading_failure(pod, progress)) for _ in range(seq_len)]
         anomaly_seqs.append(seq)
 
     eval_anomaly = np.array(anomaly_seqs, dtype=np.float32)
@@ -125,16 +119,17 @@ def generate_synthetic_dataset(
 
 # ── PyTorch Dataset Class ─────────────────────────────────────────────────────
 
+
 class MetricWindowDataset(Dataset):
     """
     PyTorch Dataset wrapping a numpy array of metric windows.
-    
+
     Args:
         data: (n_samples, seq_len, n_features) numpy array
         labels: optional (n_samples,) array — 0=normal, 1=anomaly (for eval)
     """
 
-    def __init__(self, data: np.ndarray, labels: Optional[np.ndarray] = None) -> None:
+    def __init__(self, data: np.ndarray, labels: np.ndarray | None = None) -> None:
         self.data = torch.tensor(data, dtype=torch.float32)
         self.labels = torch.tensor(labels, dtype=torch.long) if labels is not None else None
 
@@ -157,9 +152,7 @@ def get_dataloaders(
     """
     Returns (train_loader, val_loader, eval_normal_loader, eval_anomaly_loader).
     """
-    train_data, eval_normal, eval_anomaly = generate_synthetic_dataset(
-        seq_len=seq_len, seed=seed
-    )
+    train_data, eval_normal, eval_anomaly = generate_synthetic_dataset(seq_len=seq_len, seed=seed)
 
     # Split train into train + val
     n_val = int(len(train_data) * val_split)
@@ -168,9 +161,7 @@ def get_dataloaders(
 
     train_ds = MetricWindowDataset(train_data)
     val_ds = MetricWindowDataset(val_data)
-    eval_normal_ds = MetricWindowDataset(
-        eval_normal, labels=np.zeros(len(eval_normal), dtype=int)
-    )
+    eval_normal_ds = MetricWindowDataset(eval_normal, labels=np.zeros(len(eval_normal), dtype=int))
     eval_anomaly_ds = MetricWindowDataset(
         eval_anomaly, labels=np.ones(len(eval_anomaly), dtype=int)
     )
@@ -178,9 +169,7 @@ def get_dataloaders(
     train_loader = DataLoader(
         train_ds, batch_size=batch_size, shuffle=True, num_workers=num_workers
     )
-    val_loader = DataLoader(
-        val_ds, batch_size=batch_size, shuffle=False, num_workers=num_workers
-    )
+    val_loader = DataLoader(val_ds, batch_size=batch_size, shuffle=False, num_workers=num_workers)
     eval_normal_loader = DataLoader(
         eval_normal_ds, batch_size=batch_size, shuffle=False, num_workers=num_workers
     )

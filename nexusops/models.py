@@ -6,15 +6,17 @@ These schemas are used across:
   - The LangGraph agent state
   - The metrics simulator output
 """
+
 from __future__ import annotations
 
 from datetime import datetime
 from enum import Enum
-from typing import Any, Optional
+from typing import Any
+
 from pydantic import BaseModel, Field
 
-
 # ── Enums ─────────────────────────────────────────────────────────────────────
+
 
 class Severity(str, Enum):
     LOW = "low"
@@ -43,8 +45,10 @@ class IncidentStatus(str, Enum):
 
 # ── Metrics ───────────────────────────────────────────────────────────────────
 
+
 class MetricPoint(BaseModel):
     """A single time-series metric observation from a pod/node."""
+
     timestamp: datetime = Field(default_factory=datetime.utcnow)
     pod_name: str
     namespace: str
@@ -60,6 +64,7 @@ class MetricPoint(BaseModel):
 
 class MetricWindow(BaseModel):
     """A sliding window of metric points fed into the anomaly model."""
+
     pod_name: str
     namespace: str
     window_size: int
@@ -68,8 +73,10 @@ class MetricWindow(BaseModel):
 
 # ── Alerts ────────────────────────────────────────────────────────────────────
 
+
 class AnomalyAlert(BaseModel):
     """Fired by the Sentinel Agent when an anomaly is detected."""
+
     alert_id: str
     timestamp: datetime = Field(default_factory=datetime.utcnow)
     pod_name: str
@@ -85,14 +92,16 @@ class AnomalyAlert(BaseModel):
 
 # ── Log Entries ───────────────────────────────────────────────────────────────
 
+
 class LogEntry(BaseModel):
     """A single structured log line from a pod."""
+
     timestamp: datetime = Field(default_factory=datetime.utcnow)
     pod_name: str
     namespace: str
     level: str  # INFO, WARN, ERROR, CRITICAL
     message: str
-    trace_id: Optional[str] = None
+    trace_id: str | None = None
     extra: dict[str, Any] = Field(default_factory=dict)
 
     class Config:
@@ -101,8 +110,10 @@ class LogEntry(BaseModel):
 
 # ── Incidents ─────────────────────────────────────────────────────────────────
 
+
 class Incident(BaseModel):
     """The central object that flows through the LangGraph agent graph."""
+
     incident_id: str
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
@@ -114,14 +125,14 @@ class Incident(BaseModel):
     recent_logs: list[LogEntry] = Field(default_factory=list)
 
     # Agent outputs (filled as graph progresses)
-    root_cause: Optional[str] = None
-    root_cause_confidence: Optional[float] = None
-    blast_radius: Optional[str] = None
-    predicted_failure_time_minutes: Optional[int] = None
+    root_cause: str | None = None
+    root_cause_confidence: float | None = None
+    blast_radius: str | None = None
+    predicted_failure_time_minutes: int | None = None
     proposed_actions: list[dict[str, Any]] = Field(default_factory=list)
     approved_actions: list[dict[str, Any]] = Field(default_factory=list)
     executed_actions: list[dict[str, Any]] = Field(default_factory=list)
-    incident_report: Optional[str] = None
+    incident_report: str | None = None
 
     class Config:
         json_encoders = {datetime: lambda v: v.isoformat()}
@@ -129,14 +140,16 @@ class Incident(BaseModel):
 
 # ── Remediation ───────────────────────────────────────────────────────────────
 
+
 class RemediationAction(BaseModel):
     """A proposed or executed remediation action."""
+
     action_id: str
     action_type: str  # e.g., "restart_pod", "scale_deployment", "rollback"
-    target: str       # e.g., "payment-service/prod"
-    command: str      # e.g., "kubectl rollout restart deployment/payment-service -n prod"
+    target: str  # e.g., "payment-service/prod"
+    command: str  # e.g., "kubectl rollout restart deployment/payment-service -n prod"
     risk_level: Severity
     estimated_downtime_seconds: int = 0
     dry_run: bool = True
     executed: bool = False
-    result: Optional[str] = None
+    result: str | None = None

@@ -16,10 +16,9 @@ What you'll learn:
   - Model checkpointing
   - Evaluation with precision/recall/AUROC
 """
+
 from __future__ import annotations
 
-import os
-import time
 from pathlib import Path
 
 import mlflow
@@ -29,12 +28,12 @@ import torch
 import torch.optim as optim
 import typer
 from rich.console import Console
-from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TimeElapsedColumn
-from sklearn.metrics import roc_auc_score, precision_recall_curve
+from rich.progress import BarColumn, Progress, SpinnerColumn, TextColumn, TimeElapsedColumn
+from sklearn.metrics import roc_auc_score
 
-from nexusops.config import settings
-from ml.pytorch.model import LSTMAutoencoder
 from ml.pytorch.dataset import get_dataloaders
+from ml.pytorch.model import LSTMAutoencoder
+from nexusops.config import settings
 
 console = Console()
 app = typer.Typer()
@@ -90,7 +89,7 @@ def compute_auroc(
 ) -> dict:
     """
     Compute AUROC and find optimal classification threshold.
-    
+
     Returns a dict with: auroc, precision, recall, f1, threshold
     """
     model.eval()
@@ -161,9 +160,7 @@ def train(
         batch_size=batch_size,
         seq_len=seq_len,
     )
-    console.print(
-        f"  Train batches: {len(train_loader)} | Val batches: {len(val_loader)}\n"
-    )
+    console.print(f"  Train batches: {len(train_loader)} | Val batches: {len(val_loader)}\n")
 
     # ── Model ────────────────────────────────────────────────────────────────
     model = LSTMAutoencoder(
@@ -178,9 +175,7 @@ def train(
     console.print(f"  Model parameters: [green]{total_params:,}[/green]\n")
 
     optimizer = optim.Adam(model.parameters(), lr=lr, weight_decay=1e-5)
-    scheduler = optim.lr_scheduler.ReduceLROnPlateau(
-        optimizer, mode="min", factor=0.5, patience=3
-    )
+    scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode="min", factor=0.5, patience=3)
 
     # Use local file tracking — no Docker server needed, no version conflicts.
     # View results with: mlflow ui --port 5001
@@ -189,17 +184,19 @@ def train(
 
     with mlflow.start_run(run_name=f"lstm_ae_h{hidden_size}_l{num_layers}"):
         # Log hyperparameters
-        mlflow.log_params({
-            "model_type": "LSTMAutoencoder",
-            "hidden_size": hidden_size,
-            "num_layers": num_layers,
-            "seq_len": seq_len,
-            "batch_size": batch_size,
-            "learning_rate": lr,
-            "dropout": dropout,
-            "device": str(DEVICE),
-            "total_params": total_params,
-        })
+        mlflow.log_params(
+            {
+                "model_type": "LSTMAutoencoder",
+                "hidden_size": hidden_size,
+                "num_layers": num_layers,
+                "seq_len": seq_len,
+                "batch_size": batch_size,
+                "learning_rate": lr,
+                "dropout": dropout,
+                "device": str(DEVICE),
+                "total_params": total_params,
+            }
+        )
 
         # ── Training Loop ─────────────────────────────────────────────────────
         best_val_loss = float("inf")
@@ -222,19 +219,22 @@ def train(
                 scheduler.step(val_loss)
 
                 # Log to MLflow
-                mlflow.log_metrics({
-                    "train_loss": train_loss,
-                    "val_loss": val_loss,
-                    "lr": optimizer.param_groups[0]["lr"],
-                }, step=epoch)
+                mlflow.log_metrics(
+                    {
+                        "train_loss": train_loss,
+                        "val_loss": val_loss,
+                        "lr": optimizer.param_groups[0]["lr"],
+                    },
+                    step=epoch,
+                )
 
                 progress.update(
                     task,
                     advance=1,
                     description=f"Epoch {epoch:3d}/{epochs} | "
-                                f"Train: {train_loss:.6f} | "
-                                f"Val: {val_loss:.6f} | "
-                                f"LR: {optimizer.param_groups[0]['lr']:.2e}",
+                    f"Train: {train_loss:.6f} | "
+                    f"Val: {val_loss:.6f} | "
+                    f"LR: {optimizer.param_groups[0]['lr']:.2e}",
                 )
 
                 # ── Early Stopping + Checkpointing ────────────────────────────
@@ -265,12 +265,14 @@ def train(
             threshold=anomaly_threshold,
         )
 
-        mlflow.log_metrics({
-            "eval_auroc": metrics["auroc"],
-            "eval_precision": metrics["precision"],
-            "eval_recall": metrics["recall"],
-            "eval_f1": metrics["f1"],
-        })
+        mlflow.log_metrics(
+            {
+                "eval_auroc": metrics["auroc"],
+                "eval_precision": metrics["precision"],
+                "eval_recall": metrics["recall"],
+                "eval_f1": metrics["f1"],
+            }
+        )
 
         # Log model artifact
         mlflow.pytorch.log_model(best_model, name="lstm_autoencoder")

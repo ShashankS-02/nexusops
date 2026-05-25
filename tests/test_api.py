@@ -1,10 +1,11 @@
 """
 Tests for the FastAPI Gateway
 """
+
 import pytest
 from fastapi.testclient import TestClient
 
-from api.main import app, metric_buffer, incidents
+from api.main import app, incidents, metric_buffer
 
 
 @pytest.fixture(autouse=True)

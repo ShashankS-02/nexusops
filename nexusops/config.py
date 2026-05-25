@@ -2,7 +2,9 @@
 NexusOps Configuration — Central settings loaded from environment variables.
 All modules import from here instead of reading env vars directly.
 """
+
 import os
+
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -40,12 +42,8 @@ class Settings:
     # App
     APP_ENV: str = os.getenv("APP_ENV", "development")
     LOG_LEVEL: str = os.getenv("LOG_LEVEL", "INFO")
-    SENTINEL_ANOMALY_THRESHOLD: float = float(
-        os.getenv("SENTINEL_ANOMALY_THRESHOLD", "0.60")
-    )
-    HUMAN_APPROVAL_REQUIRED: bool = (
-        os.getenv("HUMAN_APPROVAL_REQUIRED", "true").lower() == "true"
-    )
+    SENTINEL_ANOMALY_THRESHOLD: float = float(os.getenv("SENTINEL_ANOMALY_THRESHOLD", "0.60"))
+    HUMAN_APPROVAL_REQUIRED: bool = os.getenv("HUMAN_APPROVAL_REQUIRED", "true").lower() == "true"
 
     # LLM Provider (openai | groq)
     LLM_PROVIDER: str = os.getenv("LLM_PROVIDER", "openai")

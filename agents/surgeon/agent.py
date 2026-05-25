@@ -13,11 +13,13 @@ In Phase 3:  Real execution once you're confident in the model quality.
 The LangGraph graph pauses BEFORE this node (interrupt_before=["surgeon"]).
 The API's /approve endpoint resumes the graph with the human's decision.
 """
+
 from __future__ import annotations
+
 import subprocess
-from datetime import datetime, timezone
+from datetime import UTC, datetime
+
 from supervisor.state import IncidentState
-from nexusops.config import settings
 
 
 def _run_dry_run(command: str) -> dict:
@@ -43,7 +45,7 @@ def _run_dry_run(command: str) -> dict:
             "success": result.returncode == 0,
             "output": result.stdout or result.stderr,
             "dry_run": True,
-            "executed_at": datetime.now(timezone.utc).isoformat(),
+            "executed_at": datetime.now(UTC).isoformat(),
         }
     except FileNotFoundError:
         # kubectl not installed locally — simulate success for demo
@@ -53,7 +55,7 @@ def _run_dry_run(command: str) -> dict:
             "output": "[SIMULATED] kubectl not found locally — would execute in cluster",
             "dry_run": True,
             "simulated": True,
-            "executed_at": datetime.now(timezone.utc).isoformat(),
+            "executed_at": datetime.now(UTC).isoformat(),
         }
     except Exception as e:
         return {
@@ -61,7 +63,7 @@ def _run_dry_run(command: str) -> dict:
             "success": False,
             "output": str(e),
             "dry_run": True,
-            "executed_at": datetime.now(timezone.utc).isoformat(),
+            "executed_at": datetime.now(UTC).isoformat(),
         }
 
 
@@ -89,10 +91,12 @@ def surgeon_node(state: IncidentState) -> dict:
         if not command:
             continue
         result = _run_dry_run(command)
-        executed.append({
-            **action,
-            "execution_result": result,
-        })
+        executed.append(
+            {
+                **action,
+                "execution_result": result,
+            }
+        )
         # Stop on failure — don't chain risky actions if one fails
         if not result["success"] and not result.get("simulated"):
             break

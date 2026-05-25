@@ -9,24 +9,22 @@ Usage:
     python -m simulator.generator              # stream forever
     python -m simulator.generator --scenario cpu_spike --duration 60
 """
+
 from __future__ import annotations
 
 import asyncio
-import json
 import math
 import random
 import time
 import uuid
-from datetime import datetime, timezone
-from typing import Generator
+from datetime import UTC, datetime
 
 import httpx
 import typer
 from rich.console import Console
-from rich.live import Live
 from rich.table import Table
 
-from nexusops.models import LogEntry, MetricPoint, Severity
+from nexusops.models import LogEntry, MetricPoint
 
 console = Console()
 app = typer.Typer()
@@ -44,7 +42,7 @@ PODS = [
 # ── Baseline Normal Distributions ─────────────────────────────────────────────
 
 BASELINE = {
-    "cpu_usage_percent": (25.0, 8.0),        # mean, std
+    "cpu_usage_percent": (25.0, 8.0),  # mean, std
     "memory_usage_percent": (45.0, 10.0),
     "request_latency_ms": (120.0, 30.0),
     "error_rate_percent": (0.5, 0.3),
@@ -59,38 +57,25 @@ def _clamp(value: float, lo: float, hi: float) -> float:
 def generate_normal_metric(pod: dict) -> MetricPoint:
     """Generates a single normal (non-anomalous) metric reading."""
     return MetricPoint(
-        timestamp=datetime.now(timezone.utc),
+        timestamp=datetime.now(UTC),
         pod_name=pod["name"],
         namespace=pod["namespace"],
-        cpu_usage_percent=_clamp(
-            random.gauss(*BASELINE["cpu_usage_percent"]), 0, 100
-        ),
-        memory_usage_percent=_clamp(
-            random.gauss(*BASELINE["memory_usage_percent"]), 0, 100
-        ),
-        request_latency_ms=_clamp(
-            random.gauss(*BASELINE["request_latency_ms"]), 0, 10000
-        ),
-        error_rate_percent=_clamp(
-            random.gauss(*BASELINE["error_rate_percent"]), 0, 100
-        ),
-        network_io_kbps=_clamp(
-            random.gauss(*BASELINE["network_io_kbps"]), 0, 100000
-        ),
+        cpu_usage_percent=_clamp(random.gauss(*BASELINE["cpu_usage_percent"]), 0, 100),
+        memory_usage_percent=_clamp(random.gauss(*BASELINE["memory_usage_percent"]), 0, 100),
+        request_latency_ms=_clamp(random.gauss(*BASELINE["request_latency_ms"]), 0, 10000),
+        error_rate_percent=_clamp(random.gauss(*BASELINE["error_rate_percent"]), 0, 100),
+        network_io_kbps=_clamp(random.gauss(*BASELINE["network_io_kbps"]), 0, 100000),
     )
 
 
 # ── Anomaly Scenarios ─────────────────────────────────────────────────────────
 
+
 def generate_cpu_spike(pod: dict, intensity: float = 1.0) -> MetricPoint:
     """Simulates a CPU spike — typical of a runaway process or traffic surge."""
     base = generate_normal_metric(pod)
-    base.cpu_usage_percent = _clamp(
-        80.0 + (intensity * 15.0) + random.gauss(0, 2.0), 0, 100
-    )
-    base.request_latency_ms = _clamp(
-        base.request_latency_ms * (1 + intensity * 3), 0, 10000
-    )
+    base.cpu_usage_percent = _clamp(80.0 + (intensity * 15.0) + random.gauss(0, 2.0), 0, 100)
+    base.request_latency_ms = _clamp(base.request_latency_ms * (1 + intensity * 3), 0, 10000)
     return base
 
 
@@ -99,9 +84,7 @@ def generate_memory_leak(pod: dict, elapsed_seconds: float) -> MetricPoint:
     base = generate_normal_metric(pod)
     # Memory grows ~1% per 10 seconds
     leak_amount = (elapsed_seconds / 10.0) * 1.0
-    base.memory_usage_percent = _clamp(
-        45.0 + leak_amount + random.gauss(0, 1.0), 0, 100
-    )
+    base.memory_usage_percent = _clamp(45.0 + leak_amount + random.gauss(0, 1.0), 0, 100)
     return base
 
 
@@ -112,9 +95,7 @@ def generate_cascading_failure(pod: dict, failure_progress: float) -> MetricPoin
     sigmoid = 1 / (1 + math.exp(-10 * (failure_progress - 0.5)))
     base.request_latency_ms = _clamp(120 + sigmoid * 4880, 0, 10000)
     base.error_rate_percent = _clamp(0.5 + sigmoid * 49.5, 0, 100)
-    base.cpu_usage_percent = _clamp(
-        base.cpu_usage_percent + sigmoid * 40, 0, 100
-    )
+    base.cpu_usage_percent = _clamp(base.cpu_usage_percent + sigmoid * 40, 0, 100)
     return base
 
 
@@ -160,7 +141,7 @@ def generate_log(pod: dict, anomaly: bool = False) -> LogEntry:
         )
 
     return LogEntry(
-        timestamp=datetime.now(timezone.utc),
+        timestamp=datetime.now(UTC),
         pod_name=pod["name"],
         namespace=pod["namespace"],
         level=level,
@@ -171,6 +152,7 @@ def generate_log(pod: dict, anomaly: bool = False) -> LogEntry:
 
 # ── Streaming Generator ────────────────────────────────────────────────────────
 
+
 async def stream_metrics(
     scenario: str = "normal",
     duration_seconds: int = 300,
@@ -180,7 +162,7 @@ async def stream_metrics(
 ) -> None:
     """
     Streams simulated metrics to the FastAPI gateway.
-    
+
     Scenarios:
       - normal           : baseline operation
       - cpu_spike        : sudden CPU surge on payment-service
@@ -254,10 +236,26 @@ async def stream_metrics(
 
                 for m in metrics_batch:
                     short_name = m.pod_name.split("-")[0] + "-" + m.pod_name.split("-")[1]
-                    cpu_str = f"[red]{m.cpu_usage_percent:.1f}[/red]" if m.cpu_usage_percent > 75 else f"{m.cpu_usage_percent:.1f}"
-                    mem_str = f"[red]{m.memory_usage_percent:.1f}[/red]" if m.memory_usage_percent > 80 else f"{m.memory_usage_percent:.1f}"
-                    lat_str = f"[red]{m.request_latency_ms:.0f}[/red]" if m.request_latency_ms > 1000 else f"{m.request_latency_ms:.0f}"
-                    err_str = f"[red]{m.error_rate_percent:.2f}[/red]" if m.error_rate_percent > 5 else f"{m.error_rate_percent:.2f}"
+                    cpu_str = (
+                        f"[red]{m.cpu_usage_percent:.1f}[/red]"
+                        if m.cpu_usage_percent > 75
+                        else f"{m.cpu_usage_percent:.1f}"
+                    )
+                    mem_str = (
+                        f"[red]{m.memory_usage_percent:.1f}[/red]"
+                        if m.memory_usage_percent > 80
+                        else f"{m.memory_usage_percent:.1f}"
+                    )
+                    lat_str = (
+                        f"[red]{m.request_latency_ms:.0f}[/red]"
+                        if m.request_latency_ms > 1000
+                        else f"{m.request_latency_ms:.0f}"
+                    )
+                    err_str = (
+                        f"[red]{m.error_rate_percent:.2f}[/red]"
+                        if m.error_rate_percent > 5
+                        else f"{m.error_rate_percent:.2f}"
+                    )
                     table.add_row(short_name, cpu_str, mem_str, lat_str, err_str)
 
                 console.print(table)
@@ -270,9 +268,12 @@ async def stream_metrics(
 
 # ── CLI Entrypoint ─────────────────────────────────────────────────────────────
 
+
 @app.command()
 def run(
-    scenario: str = typer.Option("normal", help="Scenario: normal | cpu_spike | memory_leak | cascading_failure"),
+    scenario: str = typer.Option(
+        "normal", help="Scenario: normal | cpu_spike | memory_leak | cascading_failure"
+    ),
     duration: int = typer.Option(120, help="Duration in seconds"),
     interval: float = typer.Option(2.0, help="Interval between metric batches"),
     api_url: str = typer.Option("http://localhost:8000", help="NexusOps API URL"),

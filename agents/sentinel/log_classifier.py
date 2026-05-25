@@ -11,6 +11,7 @@ Detective node. Classifies a window of log messages into:
 Input:  list of log message strings (the recent_logs window)
 Output: dict with predicted_severity and per-class probabilities
 """
+
 from __future__ import annotations
 
 from nexusops.config import settings
@@ -54,16 +55,17 @@ class LogClassifier:
         text = " ".join(log_messages)
 
         # TextVectorization requires tf.string tensors — numpy str dtype is incompatible
-        import tensorflow as tf
         import numpy as np
+        import tensorflow as tf
+
         probs = self.model.predict(tf.constant([text]), verbose=0)[0]
         predicted = CLASSES[int(np.argmax(probs))]
 
         return {
             "predicted_severity": predicted,
             "probabilities": {
-                "NORMAL":   float(probs[0]),
-                "WARNING":  float(probs[1]),
+                "NORMAL": float(probs[0]),
+                "WARNING": float(probs[1]),
                 "CRITICAL": float(probs[2]),
             },
         }

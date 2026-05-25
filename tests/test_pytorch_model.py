@@ -1,13 +1,13 @@
 """
 Tests for the PyTorch LSTM Autoencoder model
 """
+
+import numpy as np
 import pytest
 import torch
-import numpy as np
 
-from ml.pytorch.model import LSTMAutoencoder, LSTMEncoder, LSTMDecoder
-from ml.pytorch.dataset import MetricWindowDataset, metric_to_vector, generate_synthetic_dataset
-
+from ml.pytorch.dataset import MetricWindowDataset, generate_synthetic_dataset
+from ml.pytorch.model import LSTMAutoencoder, LSTMEncoder
 
 BATCH_SIZE = 8
 SEQ_LEN = 30
@@ -35,16 +35,12 @@ class TestLSTMEncoder:
 class TestLSTMAutoencoder:
     @pytest.fixture
     def model(self):
-        return LSTMAutoencoder(
-            input_size=N_FEATURES, hidden_size=32, num_layers=2, seq_len=SEQ_LEN
-        )
+        return LSTMAutoencoder(input_size=N_FEATURES, hidden_size=32, num_layers=2, seq_len=SEQ_LEN)
 
     def test_forward_output_shape(self, model):
         x = torch.randn(BATCH_SIZE, SEQ_LEN, N_FEATURES)
         reconstruction = model(x)
-        assert reconstruction.shape == x.shape, (
-            f"Expected {x.shape}, got {reconstruction.shape}"
-        )
+        assert reconstruction.shape == x.shape, f"Expected {x.shape}, got {reconstruction.shape}"
 
     def test_reconstruction_loss_is_positive(self, model):
         x = torch.randn(BATCH_SIZE, SEQ_LEN, N_FEATURES)
