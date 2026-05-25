@@ -166,7 +166,7 @@ curl -X POST http://localhost:8000/api/v1/incidents/15460a2f/approve \
 ```
 # Incident Report: 15460a2f
 ## Summary
-payment-service / prod - anomaly score 0.784 — triggered metrics:
+payment-service / prod - anomaly score 0.784 - triggered metrics:
 cpu_usage_percent, memory_usage_percent, request_latency_ms, error_rate_percent
 
 ## Root Cause
@@ -174,7 +174,7 @@ Software bug or misconfiguration caused a high error rate, which in turn drove
 elevated CPU/memory usage and request latency. Confidence: 80%.
 
 ## Impact
-Order processing, user accounts, and customer support — potential revenue impact
+Order processing, user accounts, and customer support - potential revenue impact
 if not resolved within ~30 minutes of trigger time.
 
 ## Remediation
@@ -189,8 +189,23 @@ if not resolved within ~30 minutes of trigger time.
 
 ## 📊 Phases
 
-- [x] **Phase 1** — Foundation: PyTorch + TensorFlow models, FastAPI, local simulator
-- [x] **Phase 2** — Multi-Agent: Full LangGraph graph with all 5 agents
+- [x] **Phase 1** - Foundation: PyTorch + TensorFlow models, FastAPI, local simulator
+- [x] **Phase 2** - Multi-Agent: Full LangGraph graph with all 5 agents
+
+## Limitations and Future work
+
+```
+## Limitations
+- Currently the LSTM is trained on synthetic self-generated metrics, so the AUROC score is not based on real infrastructure metrics that
+can include more noise or different edge cases.
+- Also right now, there is no way to tell if the LSTM autoencoder will out perform a static threshold or a z-score detector on this data.
+
+## Future-Work
+- Validate the LSTM autoencoder against real Prometheus metric exports from a local K3s cluster to benchmark performance other than synthetic distributions.
+- Add a z-score threshold baseline detector and compare AUROC/precision-recall against the LSTM to quantify the value of learned temporal patterns.
+- Extend the synthetic generator with realistic noise (gradual metric drift, diurnal traffic cycles, and partial failures) to better approximate production telemetry.
+
+```
 
 ---
 
