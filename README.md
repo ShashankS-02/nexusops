@@ -1,7 +1,3 @@
-## Demo
-
-![NexusOps full pipeline demo](demo.gif)
-
 ## Why I Built This
 
 I'm Shashank Shandilya, a software engineer working on production-grade agentic database support systems.
@@ -15,6 +11,10 @@ The problem space (autonomous SRE) genuinely interests me because in my current 
 # 🚀 NexusOps - Autonomous AI Site Reliability Engineer
 
 > An autonomous multi-agent system that monitors cloud infrastructure, detects anomalies, diagnoses root causes, proposes fixes, and executes remediation actions with human approval.
+
+## Demo
+
+![NexusOps full pipeline demo](demo.gif)
 
 [![Python](https://img.shields.io/badge/Python-3.11+-blue?logo=python)](https://python.org)
 [![PyTorch](https://img.shields.io/badge/PyTorch-2.x-orange?logo=pytorch)](https://pytorch.org)
