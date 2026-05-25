@@ -68,3 +68,7 @@ src/
 
 #Claude
 .claude/
+
+#Gif creation
+/scripts
+*.tape

@@ -1,3 +1,7 @@
+## Demo
+
+![NexusOps full pipeline demo](demo.gif)
+
 ## Why I Built This
 
 I'm Shashank Shandilya, a software engineer working on production-grade agentic database support systems.
