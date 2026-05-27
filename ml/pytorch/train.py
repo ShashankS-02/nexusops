@@ -177,9 +177,7 @@ def train(
     optimizer = optim.Adam(model.parameters(), lr=lr, weight_decay=1e-5)
     scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode="min", factor=0.5, patience=3)
 
-    # Use local file tracking — no Docker server needed, no version conflicts.
-    # View results with: mlflow ui --port 5001
-    mlflow.set_tracking_uri("mlruns")
+    mlflow.set_tracking_uri(settings.MLFLOW_TRACKING_URI)
     mlflow.set_experiment("nexusops-anomaly-detection")
 
     with mlflow.start_run(run_name=f"lstm_ae_h{hidden_size}_l{num_layers}"):
@@ -274,8 +272,8 @@ def train(
             }
         )
 
-        # Log model artifact
-        mlflow.pytorch.log_model(best_model, name="lstm_autoencoder")
+        # Model is saved to disk at PYTORCH_MODEL_PATH — no need to log to MLflow server
+        # (MLflow 2.x server doesn't support the logged-models API used by client 3.x)
 
         console.print(
             f"\n[bold green]✓ Training Complete![/bold green]\n"

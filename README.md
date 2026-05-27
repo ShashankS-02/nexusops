@@ -2,9 +2,7 @@
 
 I'm Shashank Shandilya, a software engineer working on production-grade agentic database support systems.
 
-I built NexusOps to demonstrate end-to-end AI engineering skills: from training
-custom PyTorch models to orchestrating multi-agent workflows with LangGraph
-and deploying on Kubernetes with full CI/CD.
+I built NexusOps to demonstrate end-to-end AI engineering skills: from training custom PyTorch models to orchestrating multi-agent workflows with LangGraph and deploying on Kubernetes with full CI/CD.
 
 The problem space (autonomous SRE) genuinely interests me because in my current organisation I see multiple teams working on migrating databases from on premises to cloud environments. This process is bringing up new challenges and concerns. I often see multiple teams escalating issues related to this to the DBA team and the production readiness team and there is always a need for more support. I believe that an agentic system like this can help solve these problems more efficiently and effectively. Additionally I am very interested in the intersect of AI and DevOps and wanted to explore this space further.
 
@@ -14,14 +12,16 @@ The problem space (autonomous SRE) genuinely interests me because in my current 
 
 ## Demo
 
-![NexusOps full pipeline demo](demo.gif)
+![NexusOps full pipeline demo](/docs/gifs/demo.gif)
 
 [![Python](https://img.shields.io/badge/Python-3.11+-blue?logo=python)](https://python.org)
 [![PyTorch](https://img.shields.io/badge/PyTorch-2.x-orange?logo=pytorch)](https://pytorch.org)
 [![LangGraph](https://img.shields.io/badge/LangGraph-0.2+-green?logo=langchain)](https://langchain-ai.github.io/langgraph/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.110+-teal?logo=fastapi)](https://fastapi.tiangolo.com)
-[![Docker](https://img.shields.io/badge/Docker-Containerized-blue?logo=docker)](https://docker.com)
-[![Kubernetes](https://img.shields.io/badge/Kubernetes-EKS-326CE5?logo=kubernetes)](https://kubernetes.io)
+
+<!-- [![Docker](https://img.shields.io/badge/Docker-Containerized-blue?logo=docker)](https://docker.com) -->
+
+[![CI](https://github.com/ShashankS-02/nexusops/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/ShashankS-02/nexusops/actions)
 
 ---
 
@@ -95,6 +95,16 @@ nexusops/
 ├── docker/                    # Dockerfiles per service
 └── tests/                     # Unit + integration tests
 ```
+
+## LangSmith traces
+
+![Agent Graph](/docs/screenshots/agent_graph.png)
+![Detective Input](/docs/screenshots/detective_input.png)
+![Detective Output](/docs/screenshots/detective_output.png)
+
+## MLFlow Metrics
+
+![MLFlow Model Metrics](/docs/screenshots/MLFlow_metrics.png)
 
 ## 🚀 Quick Start (Phase 1 — Local)
 
@@ -189,8 +199,13 @@ if not resolved within ~30 minutes of trigger time.
 
 ## 📊 Phases
 
-- [x] **Phase 1** - Foundation: PyTorch + TensorFlow models, FastAPI, local simulator
-- [x] **Phase 2** - Multi-Agent: Full LangGraph graph with all 5 agents
+## 🗺️ Roadmap
+
+- [x] **Phase 1** — Foundation: PyTorch + TensorFlow models, FastAPI gateway, synthetic simulator
+- [x] **Phase 2** — Multi-Agent: LangGraph orchestration, HITL approval, RAG memory loop
+- [ ] **Phase 3** — Containerization: Dockerfile, multi-stage builds, docker-compose for full stack
+- [ ] **Phase 4** — Kubernetes Deployment: Helm chart, EKS deployment, Prometheus + Grafana dashboards
+- [ ] **Phase 5** — Web UI: incident dashboard with real-time pipeline visualization
 
 ## Limitations and Future work
 
