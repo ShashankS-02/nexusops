@@ -2,7 +2,7 @@
 
 I'm Shashank Shandilya, a software engineer working on production-grade agentic database support systems.
 
-I built NexusOps to demonstrate end-to-end AI engineering skills: from training custom PyTorch models to orchestrating multi-agent workflows with LangGraph and deploying on Kubernetes with full CI/CD.
+I built NexusOps to demonstrate end-to-end AI engineering skills: from training custom PyTorch models to orchestrating multi-agent workflows with LangGraph and closing the loop with RAG based incident memory.
 
 The problem space (autonomous SRE) genuinely interests me because in my current organisation I see multiple teams working on migrating databases from on premises to cloud environments. This process is bringing up new challenges and concerns. I often see multiple teams escalating issues related to this to the DBA team and the production readiness team and there is always a need for more support. I believe that an agentic system like this can help solve these problems more efficiently and effectively. Additionally I am very interested in the intersect of AI and DevOps and wanted to explore this space further.
 
@@ -18,9 +18,7 @@ The problem space (autonomous SRE) genuinely interests me because in my current 
 [![PyTorch](https://img.shields.io/badge/PyTorch-2.x-orange?logo=pytorch)](https://pytorch.org)
 [![LangGraph](https://img.shields.io/badge/LangGraph-0.2+-green?logo=langchain)](https://langchain-ai.github.io/langgraph/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.110+-teal?logo=fastapi)](https://fastapi.tiangolo.com)
-
-<!-- [![Docker](https://img.shields.io/badge/Docker-Containerized-blue?logo=docker)](https://docker.com) -->
-
+[![Docker](https://img.shields.io/badge/Docker-Containerized-blue?logo=docker)](https://docker.com)
 [![CI](https://github.com/ShashankS-02/nexusops/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/ShashankS-02/nexusops/actions)
 
 ---
@@ -92,7 +90,6 @@ nexusops/
 ├── simulator/                 # Synthetic metrics & log generator
 ├── api/                       # FastAPI gateway
 ├── .github/workflows/         # CI/CD pipelines
-├── docker/                    # Dockerfiles per service
 └── tests/                     # Unit + integration tests
 ```
 
@@ -110,7 +107,7 @@ nexusops/
 
 ```bash
 # 1. Clone and enter
-git clone <your-repo-url>
+git clone https://github.com/ShashankS-02/nexusops.git
 cd nexusops
 
 # 2. Create virtual environment
@@ -140,6 +137,9 @@ uvicorn api.main:app --reload --port 8000
 
 # 10. (Optional) Launch the full agent graph
 python -m supervisor.run
+
+# OR run the setup script to get it working on your system
+./setup_phase1.sh
 ```
 
 ## Example Output
@@ -199,28 +199,23 @@ if not resolved within ~30 minutes of trigger time.
 
 ## 📊 Phases
 
-## 🗺️ Roadmap
-
 - [x] **Phase 1** — Foundation: PyTorch + TensorFlow models, FastAPI gateway, synthetic simulator
 - [x] **Phase 2** — Multi-Agent: LangGraph orchestration, HITL approval, RAG memory loop
-- [ ] **Phase 3** — Containerization: Dockerfile, multi-stage builds, docker-compose for full stack
+- [x] **Phase 3** — Containerization: Dockerfile, multi-stage builds, docker-compose for full stack
 - [ ] **Phase 4** — Kubernetes Deployment: Helm chart, EKS deployment, Prometheus + Grafana dashboards
 - [ ] **Phase 5** — Web UI: incident dashboard with real-time pipeline visualization
 
-## Limitations and Future work
-
-```
 ## Limitations
+
 - Currently the LSTM is trained on synthetic self-generated metrics, so the AUROC score is not based on real infrastructure metrics that
-can include more noise or different edge cases.
+  can include more noise or different edge cases.
 - Also right now, there is no way to tell if the LSTM autoencoder will out perform a static threshold or a z-score detector on this data.
 
 ## Future-Work
+
 - Validate the LSTM autoencoder against real Prometheus metric exports from a local K3s cluster to benchmark performance other than synthetic distributions.
 - Add a z-score threshold baseline detector and compare AUROC/precision-recall against the LSTM to quantify the value of learned temporal patterns.
 - Extend the synthetic generator with realistic noise (gradual metric drift, diurnal traffic cycles, and partial failures) to better approximate production metrics.
-
-```
 
 ---
 
