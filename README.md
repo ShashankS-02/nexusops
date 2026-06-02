@@ -95,7 +95,7 @@ nexusops/
 
 ## LangSmith traces
 
-![Agent Graph](/docs/screenshots/agent_graph.png =100x200)
+![Agent Graph](/docs/screenshots/agent_graph.png)
 ![Detective Input](/docs/screenshots/detective_input.png)
 ![Detective Output](/docs/screenshots/detective_output.png)
 

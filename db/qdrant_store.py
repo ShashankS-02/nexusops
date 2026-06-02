@@ -1,11 +1,8 @@
 """Qdrant vector store operations for NexusOps."""
 from __future__ import annotations
 import uuid
-from typing import Optional
 from qdrant_client import QdrantClient
-from qdrant_client.models import (
-    Distance, VectorParams, PointStruct, Filter, FieldCondition, MatchValue
-)
+from qdrant_client.models import Distance, VectorParams, PointStruct
 from nexusops.config import settings
 
 EMBEDDING_DIM = 384  # all-MiniLM-L6-v2
