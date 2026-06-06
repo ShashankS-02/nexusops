@@ -1,0 +1,38 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: load-generator
+  namespace: prod
+  labels:
+    app: load-generator
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: load-generator
+  template:
+    metadata:
+      labels:
+        app: load-generator
+    spec:
+      containers:
+        - name: load-generator
+          image: busybox:1.36
+          command:
+            - /bin/sh
+            - -c
+            - |
+              while true; do
+                # Hit payment-service and order-service with varied load
+                wget -q -O /dev/null http://payment-service.prod.svc.cluster.local/ 2>/dev/null
+                wget -q -O /dev/null http://payment-service.prod.svc.cluster.local/ 2>/dev/null
+                wget -q -O /dev/null http://order-service.prod.svc.cluster.local/ 2>/dev/null
+                sleep 0.5
+              done
+          resources:
+            requests:
+              cpu: 50m
+              memory: 32Mi
+            limits:
+              cpu: 100m
+              memory: 64Mi

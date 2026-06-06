@@ -1,0 +1,66 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: stress-test
+  namespace: prod
+  labels:
+    app: stress-test
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: stress-test
+  template:
+    metadata:
+      labels:
+        app: stress-test
+    spec:
+      containers:
+        - name: stress
+          image: alpine:3.20
+          command:
+            - /bin/sh
+            - -c
+            - |
+              apk add --no-cache stress-ng curl > /dev/null 2>&1
+              while true; do
+                # Phase 1: Light load (5 min)
+                echo "Phase: light load"
+                stress-ng --cpu 1 --cpu-load 10 --vm 1 --vm-bytes 32M --timeout 300s &
+                for i in $(seq 1 150); do
+                  curl -s http://payment-service.prod.svc.cluster.local/ > /dev/null
+                  sleep 2
+                done
+                wait
+
+                # Phase 2: Medium burst (3 min)
+                echo "Phase: medium burst"
+                stress-ng --cpu 1 --cpu-load 50 --vm 1 --vm-bytes 64M --timeout 180s &
+                for i in $(seq 1 180); do
+                  curl -s http://payment-service.prod.svc.cluster.local/ > /dev/null
+                  curl -s http://order-service.prod.svc.cluster.local/ > /dev/null
+                  sleep 1
+                done
+                wait
+
+                # Phase 3: Heavy spike (2 min)
+                echo "Phase: heavy spike"
+                stress-ng --cpu 2 --cpu-load 90 --vm 1 --vm-bytes 96M --timeout 120s &
+                for i in $(seq 1 240); do
+                  curl -s http://payment-service.prod.svc.cluster.local/ > /dev/null &
+                  curl -s http://order-service.prod.svc.cluster.local/ > /dev/null &
+                  sleep 0.5
+                done
+                wait
+
+                # Phase 4: Cool down (2 min)
+                echo "Phase: cool down"
+                sleep 120
+              done
+          resources:
+            requests:
+              cpu: 100m
+              memory: 64Mi
+            limits:
+              cpu: 500m
+              memory: 128Mi

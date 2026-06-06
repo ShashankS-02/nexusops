@@ -4,6 +4,7 @@ PyTorch Dataset for Metric Time-Series Windows
 
 Handles:
   - Synthetic data generation (for Phase 1 training without real k8s data)
+  - Real Prometheus CSV data loading (Phase 4 — K3s cluster metrics)
   - Sliding window creation from raw metric sequences
   - Feature normalization (StandardScaler per feature)
   - Train/val split
@@ -15,8 +16,10 @@ Usage:
 from __future__ import annotations
 
 import random
+from pathlib import Path
 
 import numpy as np
+import pandas as pd
 import torch
 from torch.utils.data import DataLoader, Dataset
 
@@ -117,6 +120,99 @@ def generate_synthetic_dataset(
     return train_data, eval_normal, eval_anomaly
 
 
+# ── Real Prometheus Data Loading ──────────────────────────────────────────────
+
+
+def load_prometheus_dataset(
+    csv_path: str | Path,
+    seq_len: int = 30,
+    anomaly_fraction: float = 0.1,
+    seed: int = 42,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """
+    Load real Prometheus metrics from CSV and create sliding windows.
+
+    The CSV is assumed to contain normal operational data. Anomaly sequences
+    are synthesized by injecting realistic perturbations (scaled spikes,
+    shifted distributions) into copies of real windows — this lets us
+    evaluate the LSTM on data whose normal baseline comes from production.
+
+    Returns:
+        train_data:   (n_train, seq_len, 5) — normal windows for training
+        eval_normal:  (n_eval, seq_len, 5)  — held-out normal windows
+        eval_anomaly: (n_anom, seq_len, 5)  — perturbed windows for eval
+    """
+    np.random.seed(seed)
+    random.seed(seed)
+
+    df = pd.read_csv(csv_path)
+    df = df.sort_values(["pod_name", "timestamp"])
+
+    # Extract the 5 features in the order the LSTM expects
+    feature_cols = FEATURE_NAMES
+    all_windows: list[np.ndarray] = []
+
+    for _pod, group in df.groupby("pod_name"):
+        values = group[feature_cols].values.astype(np.float32)
+        # Normalize using the same scales as synthetic data
+        scales = np.array(FEATURE_SCALES, dtype=np.float32)
+        values = values / scales
+
+        # Create sliding windows with 50% overlap
+        stride = max(1, seq_len // 2)
+        for start in range(0, len(values) - seq_len + 1, stride):
+            window = values[start : start + seq_len]
+            all_windows.append(window)
+
+    if not all_windows:
+        raise ValueError(f"No valid windows created from {csv_path}. Need at least {seq_len} rows per pod.")
+
+    windows = np.array(all_windows, dtype=np.float32)
+    np.random.shuffle(windows)
+
+    # Split: 80% train, 10% eval_normal, 10% base for anomaly synthesis
+    n_total = len(windows)
+    n_train = int(n_total * 0.80)
+    n_eval = int(n_total * 0.10)
+
+    train_data = windows[:n_train]
+    eval_normal = windows[n_train : n_train + n_eval]
+    anomaly_base = windows[n_train + n_eval :]
+
+    # Synthesize anomalies from real data by injecting perturbations
+    n_anomaly = max(len(anomaly_base), int(n_total * anomaly_fraction))
+    anomaly_seqs = []
+    for i in range(n_anomaly):
+        base = anomaly_base[i % len(anomaly_base)].copy()
+        perturbation = np.random.choice(["spike", "drift", "plateau"])
+
+        if perturbation == "spike":
+            # Sudden CPU/memory spike in the last third of the window
+            spike_start = seq_len * 2 // 3
+            base[spike_start:, 0] = np.clip(base[spike_start:, 0] * 3.0 + 0.3, 0, 1)  # CPU
+            base[spike_start:, 1] = np.clip(base[spike_start:, 1] * 2.5 + 0.2, 0, 1)  # Memory
+            base[spike_start:, 2] = np.clip(base[spike_start:, 2] * 4.0, 0, 1)  # Latency
+            base[spike_start:, 3] = np.clip(base[spike_start:, 3] + 0.15, 0, 1)  # Error rate
+
+        elif perturbation == "drift":
+            # Gradual increase across the whole window (memory leak pattern)
+            ramp = np.linspace(1.0, 3.0, seq_len).reshape(-1, 1)
+            base[:, 1] = np.clip(base[:, 1] * ramp.flatten(), 0, 1)
+            base[:, 2] = np.clip(base[:, 2] * ramp.flatten() * 1.5, 0, 1)
+
+        else:  # plateau
+            # All metrics flatline at high values (resource exhaustion)
+            base[seq_len // 2 :, 0] = np.random.uniform(0.85, 0.98)
+            base[seq_len // 2 :, 1] = np.random.uniform(0.80, 0.95)
+            base[seq_len // 2 :, 3] = np.random.uniform(0.10, 0.25)
+
+        anomaly_seqs.append(base)
+
+    eval_anomaly = np.array(anomaly_seqs, dtype=np.float32)
+
+    return train_data, eval_normal, eval_anomaly
+
+
 # ── PyTorch Dataset Class ─────────────────────────────────────────────────────
 
 
@@ -148,11 +244,22 @@ def get_dataloaders(
     val_split: float = 0.1,
     num_workers: int = 0,
     seed: int = 42,
+    data_source: str | None = None,
 ) -> tuple[DataLoader, DataLoader, DataLoader, DataLoader]:
     """
     Returns (train_loader, val_loader, eval_normal_loader, eval_anomaly_loader).
+
+    Args:
+        data_source: Path to a Prometheus CSV file. If None, uses synthetic data.
     """
-    train_data, eval_normal, eval_anomaly = generate_synthetic_dataset(seq_len=seq_len, seed=seed)
+    if data_source and Path(data_source).exists():
+        train_data, eval_normal, eval_anomaly = load_prometheus_dataset(
+            csv_path=data_source, seq_len=seq_len, seed=seed,
+        )
+    else:
+        train_data, eval_normal, eval_anomaly = generate_synthetic_dataset(
+            seq_len=seq_len, seed=seed,
+        )
 
     # Split train into train + val
     n_val = int(len(train_data) * val_split)

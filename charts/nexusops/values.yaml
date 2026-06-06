@@ -1,0 +1,105 @@
+# ============================================================
+# NexusOps Helm Values
+# ============================================================
+
+# -- Global settings
+namespace: nexusops
+
+# -- NexusOps API (FastAPI gateway)
+api:
+  replicaCount: 1
+  image:
+    repository: nexusops
+    tag: latest
+    pullPolicy: IfNotPresent
+  port: 8000
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+  env:
+    APP_ENV: production
+    LOG_LEVEL: INFO
+    SENTINEL_ANOMALY_THRESHOLD: "0.60"
+    HUMAN_APPROVAL_REQUIRED: "true"
+
+# -- PostgreSQL + pgvector
+postgresql:
+  enabled: true
+  image:
+    repository: pgvector/pgvector
+    tag: pg16
+  port: 5432
+  auth:
+    username: nexusops
+    password: nexusops
+    database: nexusops
+  storage:
+    size: 5Gi
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+# -- Redis (LangGraph checkpointing + agent state)
+redis:
+  enabled: true
+  image:
+    repository: redis
+    tag: 7-alpine
+  port: 6379
+  storage:
+    size: 1Gi
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 128Mi
+
+# -- Qdrant (vector store for RAG incident memory)
+qdrant:
+  enabled: true
+  image:
+    repository: qdrant/qdrant
+    tag: v1.13.0
+  port: 6333
+  storage:
+    size: 2Gi
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+# -- MLflow (experiment tracking)
+mlflow:
+  enabled: true
+  image:
+    repository: ghcr.io/mlflow/mlflow
+    tag: v2.19.0
+  port: 5001
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+# -- LLM provider secrets (create manually or via sealed-secrets)
+secrets:
+  # Set these via --set or a secrets file (never commit real keys)
+  groqApiKey: ""
+  openaiApiKey: ""
+  langchainApiKey: ""
+  tavilyApiKey: ""

@@ -138,14 +138,17 @@ def train(
     dropout: float = typer.Option(0.2, help="Dropout rate"),
     patience: int = typer.Option(5, help="Early stopping patience (epochs)"),
     anomaly_threshold: float = typer.Option(0.60, help="Anomaly score threshold"),
+    data_source: str = typer.Option("", help="Path to Prometheus CSV (empty = synthetic data)"),
 ):
     """Train the LSTM Autoencoder anomaly detection model."""
 
     MODEL_SAVE_DIR.mkdir(parents=True, exist_ok=True)
 
+    data_label = f"Prometheus CSV: {data_source}" if data_source else "Synthetic"
     console.print(
         f"\n[bold cyan]NexusOps — PyTorch LSTM Autoencoder Training[/bold cyan]\n"
         f"  Device      : [yellow]{DEVICE}[/yellow]\n"
+        f"  Data source : [green]{data_label}[/green]\n"
         f"  Hidden size : {hidden_size}\n"
         f"  Num layers  : {num_layers}\n"
         f"  Seq length  : {seq_len}\n"
@@ -155,10 +158,11 @@ def train(
     )
 
     # ── Data ────────────────────────────────────────────────────────────────
-    console.print("[dim]Generating synthetic dataset...[/dim]")
+    console.print(f"[dim]Loading dataset ({data_label})...[/dim]")
     train_loader, val_loader, eval_normal_loader, eval_anomaly_loader = get_dataloaders(
         batch_size=batch_size,
         seq_len=seq_len,
+        data_source=data_source or None,
     )
     console.print(f"  Train batches: {len(train_loader)} | Val batches: {len(val_loader)}\n")
 

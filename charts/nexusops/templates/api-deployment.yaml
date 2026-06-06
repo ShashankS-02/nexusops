@@ -1,0 +1,74 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nexusops-api
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: nexusops-api
+    {{- include "nexusops.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.api.replicaCount }}
+  selector:
+    matchLabels:
+      app: nexusops-api
+  template:
+    metadata:
+      labels:
+        app: nexusops-api
+    spec:
+      containers:
+        - name: api
+          image: "{{ .Values.api.image.repository }}:{{ .Values.api.image.tag }}"
+          imagePullPolicy: {{ .Values.api.image.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.api.port }}
+              protocol: TCP
+          envFrom:
+            - secretRef:
+                name: nexusops-secrets
+          env:
+            - name: APP_ENV
+              value: {{ .Values.api.env.APP_ENV | quote }}
+            - name: LOG_LEVEL
+              value: {{ .Values.api.env.LOG_LEVEL | quote }}
+            - name: SENTINEL_ANOMALY_THRESHOLD
+              value: {{ .Values.api.env.SENTINEL_ANOMALY_THRESHOLD | quote }}
+            - name: HUMAN_APPROVAL_REQUIRED
+              value: {{ .Values.api.env.HUMAN_APPROVAL_REQUIRED | quote }}
+            - name: QDRANT_HOST
+              value: "qdrant"
+            - name: QDRANT_PORT
+              value: "6333"
+            - name: MLFLOW_TRACKING_URI
+              value: "http://mlflow:{{ .Values.mlflow.port }}"
+          resources:
+            {{- toYaml .Values.api.resources | nindent 12 }}
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: {{ .Values.api.port }}
+            initialDelaySeconds: 15
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: {{ .Values.api.port }}
+            initialDelaySeconds: 10
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nexusops-api
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: nexusops-api
+    {{- include "nexusops.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  selector:
+    app: nexusops-api
+  ports:
+    - port: {{ .Values.api.port }}
+      targetPort: {{ .Values.api.port }}
+      protocol: TCP

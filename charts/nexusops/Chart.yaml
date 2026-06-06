@@ -1,0 +1,15 @@
+apiVersion: v2
+name: nexusops
+description: Autonomous AI Site Reliability Engineer — multi-agent system for infrastructure monitoring, anomaly detection, and automated remediation
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - sre
+  - anomaly-detection
+  - langgraph
+  - pytorch
+  - multi-agent
+maintainers:
+  - name: Shashank Shandilya
+    url: https://github.com/ShashankS-02

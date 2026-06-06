@@ -19,6 +19,8 @@ The problem space (autonomous SRE) genuinely interests me because in my current 
 [![LangGraph](https://img.shields.io/badge/LangGraph-0.2+-green?logo=langchain)](https://langchain-ai.github.io/langgraph/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.110+-teal?logo=fastapi)](https://fastapi.tiangolo.com)
 [![Docker](https://img.shields.io/badge/Docker-Containerized-blue?logo=docker)](https://docker.com)
+[![Kubernetes](https://img.shields.io/badge/Kubernetes-K3s-blue?logo=kubernetes)](https://k3s.io)
+[![Helm](https://img.shields.io/badge/Helm-Chart-purple?logo=helm)](https://helm.sh)
 [![CI](https://github.com/ShashankS-02/nexusops/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/ShashankS-02/nexusops/actions)
 
 ---
@@ -32,7 +34,7 @@ The problem space (autonomous SRE) genuinely interests me because in my current 
    └────────────────────────────────────────────────────────────────────────┘
                                    │
                   --------------------------------------------------
-                 |              SENTINAL                            |
+                 |              SENTINEL                            |
                  |      Trained on 5,000 synthetic sequences        |
                  | AUROC: 0.9933, Precision: 1.00 at threshold 0.60 |
                  |                                                  |
@@ -69,9 +71,9 @@ The problem space (autonomous SRE) genuinely interests me because in my current 
 | ----------- | -------------------------------------------------------------------------------------------------------- |
 | **AI / ML** | PyTorch 2.x, TensorFlow/Keras 2.16, LangChain, LangGraph                                                 |
 | **LLMs**    | OpenAI GPT-4o-mini, Groq Llama-3.3-70b                                                                   |
-| **MLOps**   | MLflow, LangSmith, Prometheus                                                                            |
+| **MLOps**   | MLflow, LangSmith, Prometheus, Grafana                                                                   |
 | **Backend** | FastAPI, Redis, PostgreSQL + pgvector, Qdrant, HuggingFace Sentence Transformers, SQLite (checkpointing) |
-| **DevOps**  | Docker, Docker Compose                                                                                   |
+| **DevOps**  | Docker, Docker Compose, Kubernetes (K3s), Helm                                                           |
 
 ## 🗂️ Project Structure
 
@@ -86,22 +88,62 @@ nexusops/
 ├── supervisor/                # LangGraph orchestration
 ├── ml/                        # PyTorch & TensorFlow models
 │   ├── pytorch/               # LSTM autoencoder
-│   └── tensorflow/            # Log pattern classifier
+│   ├── tensorflow/            # Log pattern classifier
+│   └── baselines/             # Z-score & static threshold baselines
+├── charts/nexusops/           # Helm chart for K8s deployment
+├── k8s/                       # Sample workloads, stress tests & Grafana dashboards
+├── scripts/                   # Demo & Prometheus export scripts
+├── db/                        # Qdrant vector store operations
+├── nexusops/                  # Core config & shared utilities
 ├── simulator/                 # Synthetic metrics & log generator
 ├── api/                       # FastAPI gateway
 ├── .github/workflows/         # CI/CD pipelines
 └── tests/                     # Unit + integration tests
 ```
 
-## LangSmith traces
+## 🔍 LangSmith Traces
 
-![Agent Graph](/docs/screenshots/agent_graph.png)
-![Detective Input](/docs/screenshots/detective_input.png)
-![Detective Output](/docs/screenshots/detective_output.png)
+<img src="/docs/screenshots/agent_graph.png" width="600" alt="Agent execution graph">
 
-## MLFlow Metrics
+_Two LangGraph runs for one incident. The pipeline pauses at the HITL gate after Oracle, then resumes after human approval. This is LangGraph's `interrupt_before` checkpoint pattern in action._
 
-![MLFlow Model Metrics](/docs/screenshots/MLFlow_metrics.png)
+<img src="/docs/screenshots/detective_input.png" width="600" alt="Detective agent input">
+
+_Detective agent receives the full alert context (pod name, anomaly score, triggered metrics) and any similar past incidents retrieved from Qdrant via RAG._
+
+<img src="/docs/screenshots/detective_output.png" width="600" alt="Detective agent output">
+
+_Detective returns structured JSON that contains root cause hypothesis with confidence score. This is fed directly into Oracle for blast radius prediction._
+
+## 📊 MLflow Metrics
+
+<img src="/docs/screenshots/MLFlow_metrics.png" width="700" alt="MLflow training metrics">
+
+_PyTorch LSTM Autoencoder - train/val loss convergence, learning rate schedule (ReduceLROnPlateau), and AUROC 0.99 on held-out anomaly detection._
+
+## 🖥️ Grafana Dashboard
+
+<img src="/docs/screenshots/grafana_dashboard.png" width="700" alt="Grafana K8s monitoring dashboard">
+
+_Live Kubernetes cluster monitoring - per-pod CPU and memory usage, network I/O, pod status, container restarts, and node-level resource gauges. Dashboard JSON is version-controlled at [`k8s/grafana/nexusops-dashboard.json`](k8s/grafana/nexusops-dashboard.json)._
+
+## 📈 Real-Data Benchmark (K3s Cluster)
+
+Trained the LSTM on **4,567 real Prometheus metric points** exported from a local K3s cluster running `payment-service`, `order-service`, and a stress-test workload with varied load phases (light → medium → heavy → cool down).
+
+| Detector         | AUROC      | Precision  | Recall | F1     |
+| ---------------- | ---------- | ---------- | ------ | ------ |
+| Z-Score Baseline | **0.8354** | 0.9583     | 0.7419 | 0.8364 |
+| LSTM Autoencoder | 0.7542     | **1.0000** | 0.3226 | 0.4878 |
+| Static Threshold | 0.6296     | 1.0000     | 0.3226 | 0.4878 |
+
+**Key takeaways:**
+
+- On limited real data (~4.5K points), the z-score baseline outperforms the LSTM in overall AUROC
+- The LSTM achieves **perfect precision** (zero false positives) — critical for production SRE where alert fatigue is a real problem
+- With more temporal diversity (diurnal cycles, multi-day patterns), the LSTM's sequential pattern learning is expected to close the gap
+
+_On synthetic data (5,000 sequences with injected anomalies), the LSTM achieves AUROC 0.9933 — see [ml/baselines/](ml/baselines/) for the full benchmark code._
 
 ## 🚀 Quick Start (Phase 1 — Local)
 
@@ -140,6 +182,37 @@ python -m supervisor.run
 
 # OR run the setup script to get it working on your system
 ./setup_phase1.sh
+```
+
+## 🚀 Quick Start (Phase 4 — Kubernetes)
+
+```bash
+# 1. Start a local K3s cluster (macOS)
+brew install colima helm kubectl
+colima start --kubernetes --cpu 4 --memory 8 --disk 30
+
+# 2. Deploy the monitoring stack (Prometheus + Grafana)
+helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+helm install monitoring prometheus-community/kube-prometheus-stack \
+  --namespace monitoring --create-namespace
+
+# 3. Deploy NexusOps via Helm
+helm install nexusops ./charts/nexusops \
+  --set secrets.groqApiKey=$GROQ_API_KEY \
+  --set secrets.langchainApiKey=$LANGCHAIN_API_KEY
+
+# 4. Access Grafana and Prometheus
+kubectl port-forward -n monitoring svc/monitoring-grafana 3000:80 &
+kubectl port-forward -n monitoring svc/monitoring-kube-prometheus-prometheus 9090:9090 &
+# Grafana: http://localhost:3000 (admin / prom-operator)
+# Prometheus: http://localhost:9090
+
+# 5. Export real Prometheus metrics and retrain
+python -m scripts.export_prometheus_metrics --hours 2
+python -m ml.pytorch.train --data-source data/prometheus_export/metrics_combined.csv
+
+# 6. Benchmark LSTM vs baselines
+python -m ml.baselines.zscore_detector --data-source data/prometheus_export/metrics_combined.csv
 ```
 
 ## Example Output
@@ -202,20 +275,21 @@ if not resolved within ~30 minutes of trigger time.
 - [x] **Phase 1** — Foundation: PyTorch + TensorFlow models, FastAPI gateway, synthetic simulator
 - [x] **Phase 2** — Multi-Agent: LangGraph orchestration, HITL approval, RAG memory loop
 - [x] **Phase 3** — Containerization: Dockerfile, multi-stage builds, docker-compose for full stack
-- [ ] **Phase 4** — Kubernetes Deployment: Helm chart, EKS deployment, Prometheus + Grafana dashboards
+- [x] **Phase 4** — Kubernetes: Helm chart, K3s deployment, Prometheus + Grafana, real-data benchmark
 - [ ] **Phase 5** — Web UI: incident dashboard with real-time pipeline visualization
 
 ## Limitations
 
-- Currently the LSTM is trained on synthetic self-generated metrics, so the AUROC score is not based on real infrastructure metrics that
-  can include more noise or different edge cases.
-- Also right now, there is no way to tell if the LSTM autoencoder will out perform a static threshold or a z-score detector on this data.
+- On real Prometheus data (~4.5K points), the LSTM autoencoder (AUROC 0.75) is outperformed by a z-score baseline (AUROC 0.84). The LSTM does achieve perfect precision (zero false positives), but needs more temporal diversity to leverage its sequential pattern learning.
+- The real-data evaluation uses synthesized anomaly injections on top of normal Prometheus exports, since organic production incidents are rare and hard to label.
+- Latency and error rate metrics are derived proxies (correlated with CPU/memory) since the sample nginx workloads don't expose native request metrics.
 
-## Future-Work
+## Future Work
 
-- Validate the LSTM autoencoder against real Prometheus metric exports from a local K3s cluster to benchmark performance other than synthetic distributions.
-- Add a z-score threshold baseline detector and compare AUROC/precision-recall against the LSTM to quantify the value of learned temporal patterns.
-- Extend the synthetic generator with realistic noise (gradual metric drift, diurnal traffic cycles, and partial failures) to better approximate production metrics.
+- Collect multi-day Prometheus exports with diurnal traffic cycles to give the LSTM enough temporal context to outperform statistical baselines.
+- Add a ServiceMonitor CRD and instrument the sample workloads with Prometheus client libraries to capture real request latency and error rate metrics.
+- Extend the Helm chart with HPA (Horizontal Pod Autoscaler) and PodDisruptionBudgets for production-grade resilience.
+- Build a web UI dashboard (Phase 5) with real-time incident pipeline visualization and approval workflow.
 
 ---
 

@@ -66,6 +66,11 @@ nexusops_checkpoints.db
 # Scratch / experiments
 src/
 
-#Gif creation
-/scripts
+# VHS tape files (GIF creation)
 *.tape
+
+# Prometheus metric exports (regenerated per cluster)
+data/prometheus_export/
+
+# Architecture diagram generator
+architecture_diagram.py
