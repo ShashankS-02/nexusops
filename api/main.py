@@ -383,17 +383,38 @@ async def approve_incident(
     if approval.approved:
         incident.approved_actions = incident.proposed_actions.copy()
         incident.status = IncidentStatus.REMEDIATING
-        background_tasks.add_task(_execute_approved_actions, incident_id=incident_id)
+        background_tasks.add_task(
+            _execute_approved_actions,
+            incident_id=incident_id,
+            approver=approval.approver,
+        )
         return {"status": "approved", "incident_id": incident_id, "message": "Remediation started"}
     else:
-        incident.status = IncidentStatus.CLOSED
+        # Human rejected — resume the graph so Surgeon records the rejection and
+        # Scribe still produces a post-mortem documenting why nothing was run.
+        incident.status = IncidentStatus.REMEDIATING
+        background_tasks.add_task(
+            _execute_approved_actions,
+            incident_id=incident_id,
+            approver=approval.approver,
+            approved=False,
+            reason=approval.reason or "No reason given",
+        )
         return {"status": "rejected", "incident_id": incident_id, "reason": approval.reason}
 
 
-async def _execute_approved_actions(incident_id: str) -> None:
+async def _execute_approved_actions(
+    incident_id: str,
+    approver: str = "human",
+    approved: bool = True,
+    reason: str = "",
+) -> None:
     """
-    Resume the paused LangGraph graph after human approval.
+    Resume the paused LangGraph graph after a human decision.
     Continues from the Surgeon node through to Scribe.
+
+    On approval, Surgeon executes the proposed actions (dry-run in Phase 2).
+    On rejection, Surgeon records the rejection and Scribe still writes a report.
     """
     incident = incidents.get(incident_id)
     if not incident:
@@ -403,16 +424,19 @@ async def _execute_approved_actions(incident_id: str) -> None:
 
         graph_state = await resume_graph(
             incident_id=incident_id,
-            approved=True,
-            approver=incident.approved_actions[0].get("approver", "human")
-            if incident.approved_actions
-            else "human",
+            approved=approved,
+            approver=approver,
+            reason=reason,
         )
         incident.executed_actions = graph_state.get("executed_actions", [])
         incident.incident_report = graph_state.get("incident_report")
-        incident.status = IncidentStatus.RESOLVED
+        incident.status = (
+            IncidentStatus.RESOLVED if approved else IncidentStatus.CLOSED
+        )
         print(
-            f"  [Incident {incident_id}] Resolved. Report generated. Stored in Qdrant: {graph_state.get('report_stored_in_qdrant', False)}"
+            f"  [Incident {incident_id}] {'Resolved' if approved else 'Closed (rejected)'}. "
+            f"Actions executed: {len(incident.executed_actions)}. "
+            f"Stored in Qdrant: {graph_state.get('report_stored_in_qdrant', False)}"
         )
     except Exception as e:
         print(f"  [Incident {incident_id}] Resume error: {e}")

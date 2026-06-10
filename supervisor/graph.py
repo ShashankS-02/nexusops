@@ -88,9 +88,15 @@ async def resume_graph(incident_id: str, approved: bool, approver: str = "human"
 
     Called by the FastAPI /approve endpoint.
     Updates state with approval decision, then continues surgeon → scribe.
-    """
-    from langgraph.types import Command
 
+    NOTE: The graph pauses via a STATIC interrupt (interrupt_before=["surgeon"]),
+    not a dynamic interrupt() call. The correct way to resume a static interrupt
+    is to write the human's decision into the checkpointed channel state with
+    aupdate_state(), then continue execution by streaming with `None` as input.
+    Using Command(resume=...) here would silently fail — that mechanism only
+    feeds a value to a dynamic interrupt() call, so human_approved would never
+    reach the Surgeon node and no actions would ever execute.
+    """
     builder = _build_graph()
 
     async with AsyncSqliteSaver.from_conn_string(settings.CHECKPOINT_DB_PATH) as checkpointer:
@@ -101,23 +107,33 @@ async def resume_graph(incident_id: str, approved: bool, approver: str = "human"
 
         config = {"configurable": {"thread_id": incident_id}}
 
-        # Inject the human's decision into the state, then resume
-        approval_update = {
-            "human_approved": approved,
-            "approver": approver,
-            "rejection_reason": reason if not approved else None,
-        }
+        # 1. Write the human's decision into the checkpointed state.
+        await graph.aupdate_state(
+            config,
+            {
+                "human_approved": approved,
+                "approver": approver,
+                "rejection_reason": reason if not approved else None,
+            },
+        )
 
-        final_state = {}
-        async for event in graph.astream(
-            Command(resume=approval_update),
-            config=config,
-        ):
+        # 2. Resume execution from the interrupt point (surgeon → scribe).
+        final_state: dict = {}
+        async for event in graph.astream(None, config=config):
             node_name = list(event.keys())[0] if event else "unknown"
             node_output = list(event.values())[0] if event else {}
             print(f"  [Graph] ✓ Node '{node_name}' complete (resumed)")
             if isinstance(node_output, dict):
                 final_state.update(node_output)
+
+        # 3. Merge in the full final channel state so callers get everything
+        #    (executed_actions, incident_report, etc.) even if a node returned
+        #    nothing new in its streamed event.
+        snapshot = await graph.aget_state(config)
+        if snapshot and snapshot.values:
+            merged = dict(snapshot.values)
+            merged.update(final_state)
+            return merged
 
         return final_state
 
