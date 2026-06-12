@@ -63,8 +63,8 @@ infra/helm/**/secrets.yaml
 # Runtime artifacts
 nexusops_checkpoints.db
 
-# Scratch / experiments
-src/
+# Scratch / experiments (root-level only — keep frontend/src tracked)
+/src/
 
 # VHS tape files (GIF creation)
 *.tape
