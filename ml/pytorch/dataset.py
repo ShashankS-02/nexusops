@@ -165,7 +165,9 @@ def load_prometheus_dataset(
             all_windows.append(window)
 
     if not all_windows:
-        raise ValueError(f"No valid windows created from {csv_path}. Need at least {seq_len} rows per pod.")
+        raise ValueError(
+            f"No valid windows created from {csv_path}. Need at least {seq_len} rows per pod."
+        )
 
     windows = np.array(all_windows, dtype=np.float32)
     np.random.shuffle(windows)
@@ -254,11 +256,14 @@ def get_dataloaders(
     """
     if data_source and Path(data_source).exists():
         train_data, eval_normal, eval_anomaly = load_prometheus_dataset(
-            csv_path=data_source, seq_len=seq_len, seed=seed,
+            csv_path=data_source,
+            seq_len=seq_len,
+            seed=seed,
         )
     else:
         train_data, eval_normal, eval_anomaly = generate_synthetic_dataset(
-            seq_len=seq_len, seed=seed,
+            seq_len=seq_len,
+            seed=seed,
         )
 
     # Split train into train + val

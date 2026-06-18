@@ -22,8 +22,6 @@ from rich.table import Table
 from sklearn.metrics import roc_auc_score
 
 from ml.pytorch.dataset import (
-    FEATURE_NAMES,
-    FEATURE_SCALES,
     generate_synthetic_dataset,
     load_prometheus_dataset,
 )
@@ -121,6 +119,7 @@ def benchmark(
 ):
     """Benchmark z-score baseline against the LSTM autoencoder."""
     import torch
+
     from ml.pytorch.model import LSTMAutoencoder
 
     console.print("\n[bold cyan]NexusOps — Anomaly Detection Benchmark[/bold cyan]\n")
@@ -129,7 +128,8 @@ def benchmark(
     if data_source and Path(data_source).exists():
         console.print(f"  Data source: [green]Prometheus CSV[/green] ({data_source})")
         train_data, eval_normal, eval_anomaly = load_prometheus_dataset(
-            csv_path=data_source, seq_len=seq_len,
+            csv_path=data_source,
+            seq_len=seq_len,
         )
     else:
         console.print("  Data source: [yellow]Synthetic[/yellow]")
@@ -143,10 +143,12 @@ def benchmark(
 
     # Build labels
     eval_data = np.concatenate([eval_normal, eval_anomaly])
-    labels = np.concatenate([
-        np.zeros(len(eval_normal)),
-        np.ones(len(eval_anomaly)),
-    ])
+    labels = np.concatenate(
+        [
+            np.zeros(len(eval_normal)),
+            np.ones(len(eval_anomaly)),
+        ]
+    )
 
     results = []
 
@@ -210,10 +212,7 @@ def benchmark(
 
     # ── Determine winner ────────────────────────────────────────────────
     best = max(results, key=lambda x: x["auroc"])
-    console.print(
-        f"[bold green]Winner: {best['name']}[/bold green] "
-        f"(AUROC {best['auroc']:.4f})\n"
-    )
+    console.print(f"[bold green]Winner: {best['name']}[/bold green] (AUROC {best['auroc']:.4f})\n")
 
 
 if __name__ == "__main__":

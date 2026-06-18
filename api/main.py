@@ -430,9 +430,7 @@ async def _execute_approved_actions(
         )
         incident.executed_actions = graph_state.get("executed_actions", [])
         incident.incident_report = graph_state.get("incident_report")
-        incident.status = (
-            IncidentStatus.RESOLVED if approved else IncidentStatus.CLOSED
-        )
+        incident.status = IncidentStatus.RESOLVED if approved else IncidentStatus.CLOSED
         print(
             f"  [Incident {incident_id}] {'Resolved' if approved else 'Closed (rejected)'}. "
             f"Actions executed: {len(incident.executed_actions)}. "
