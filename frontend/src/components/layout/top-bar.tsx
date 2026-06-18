@@ -1,14 +1,54 @@
 "use client";
 
-import { Zap, WifiOff } from "lucide-react";
+import { useState } from "react";
+import { Zap, WifiOff, Plus, Check } from "lucide-react";
 import { motion } from "framer-motion";
 import { useApi } from "@/hooks/use-api";
-import { api } from "@/lib/api-client";
+import { api, triggerDemoIncident } from "@/lib/api-client";
+import { isDemoMode } from "@/lib/demo-engine";
 import type { HealthResponse } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { GlobalSearch } from "./global-search";
 import { NotificationBell } from "./notification-bell";
 import { UserMenu } from "./user-menu";
+
+function DemoControls() {
+  const [fired, setFired] = useState(false);
+
+  function trigger() {
+    triggerDemoIncident();
+    setFired(true);
+    setTimeout(() => setFired(false), 900);
+  }
+
+  return (
+    <div className="flex items-center gap-2">
+      <span
+        title="Simulated data — no backend connected"
+        className="hidden md:inline-flex items-center gap-1.5 rounded-full border border-signal/25 bg-signal/10 px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.16em] text-signal"
+      >
+        <span className="h-1.5 w-1.5 rounded-full bg-signal" />
+        Demo
+      </span>
+      <button
+        onClick={trigger}
+        className="inline-flex items-center gap-1.5 rounded-lg border border-white/12 px-2.5 py-1.5 text-xs font-medium text-white/80 hover:bg-white/5 transition-colors"
+      >
+        {fired ? (
+          <>
+            <Check className="w-3.5 h-3.5 text-signal" />
+            <span className="hidden sm:inline">Triggered</span>
+          </>
+        ) : (
+          <>
+            <Plus className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Trigger incident</span>
+          </>
+        )}
+      </button>
+    </div>
+  );
+}
 
 function PipelineStatus() {
   const { data, loading } = useApi<HealthResponse>(
@@ -74,6 +114,7 @@ export function TopBar() {
 
       {/* Right side */}
       <div className="flex items-center gap-3">
+        {isDemoMode() && <DemoControls />}
         <PipelineStatus />
         <NotificationBell />
         <UserMenu />

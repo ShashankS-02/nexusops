@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { isDemoMode } from "@/lib/demo-engine";
 
 interface UseApiOptions {
   /** Polling interval in ms. Omit or set to 0 to disable polling. */
@@ -50,8 +51,12 @@ export function useApi<T>(
     setLoading(true);
     run();
 
+    // In demo mode the lifecycle advances every few seconds, so poll faster
+    // (1.5s) than the component's configured interval to keep the pipeline
+    // illumination smooth. Reads are in-memory, so this is cheap.
     if (options.pollInterval && options.pollInterval > 0) {
-      const id = setInterval(run, options.pollInterval);
+      const interval = isDemoMode() ? 1500 : options.pollInterval;
+      const id = setInterval(run, interval);
       return () => {
         mounted.current = false;
         clearInterval(id);

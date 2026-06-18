@@ -10,6 +10,8 @@ The problem space (autonomous SRE) genuinely interests me because in my current 
 
 > An autonomous multi-agent system that monitors cloud infrastructure, detects anomalies, diagnoses root causes, proposes fixes, and executes remediation actions with human approval.
 
+**🌐 Live demo:** **[nexusops-olive.vercel.app](https://nexusops-olive.vercel.app)** — interactive landing site + the operator console (Dashboard / Incidents / Pipeline / Agents). The console runs on representative mock data in production when no backend is connected.
+
 ## Demo
 
 ![NexusOps full pipeline demo](/docs/gifs/demo.gif)
@@ -22,6 +24,8 @@ The problem space (autonomous SRE) genuinely interests me because in my current 
 [![Kubernetes](https://img.shields.io/badge/Kubernetes-K3s-blue?logo=kubernetes)](https://k3s.io)
 [![Helm](https://img.shields.io/badge/Helm-Chart-purple?logo=helm)](https://helm.sh)
 [![CI](https://github.com/ShashankS-02/nexusops/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/ShashankS-02/nexusops/actions)
+[![Next.js](https://img.shields.io/badge/Next.js-16-black?logo=nextdotjs)](https://nextjs.org)
+[![Vercel](https://img.shields.io/badge/Vercel-Live-black?logo=vercel)](https://nexusops-olive.vercel.app)
 
 ---
 
@@ -74,6 +78,7 @@ The problem space (autonomous SRE) genuinely interests me because in my current 
 | **MLOps**   | MLflow, LangSmith, Prometheus, Grafana                                                                   |
 | **Backend** | FastAPI, Redis, PostgreSQL + pgvector, Qdrant, HuggingFace Sentence Transformers, SQLite (checkpointing) |
 | **DevOps**  | Docker, Docker Compose, Kubernetes (K3s), Helm                                                           |
+| **Frontend**| Next.js 16, React 19, TypeScript, Tailwind CSS v4, shadcn/ui, Framer Motion, Recharts — deployed on Vercel |
 
 ## 🗂️ Project Structure
 
@@ -97,6 +102,13 @@ nexusops/
 ├── nexusops/                  # Core config & shared utilities
 ├── simulator/                 # Synthetic metrics & log generator
 ├── api/                       # FastAPI gateway
+├── frontend/                  # Next.js web UI (Phase 5)
+│   └── src/
+│       ├── app/(marketing)/   # Public landing site
+│       ├── app/(app)/         # Operator console: dashboard, incidents, pipeline, agents
+│       ├── app/api/           # Route handlers proxying to the FastAPI backend
+│       ├── components/        # UI kit, dashboard, layout & marketing components
+│       └── lib/, hooks/       # API client, schema adapters, polling hook
 ├── .github/workflows/         # CI/CD pipelines
 └── tests/                     # Unit + integration tests
 ```
@@ -270,13 +282,43 @@ if not resolved within ~30 minutes of trigger time.
 - Integrate canary deploys to catch regressions before full rollout
 ```
 
+## 🖥️ Web UI (Phase 5)
+
+A **Next.js 16** web app (deployed on Vercel) wraps the whole system. It has two halves:
+
+**Marketing landing site (`/`)** — a self-contained explainer of what NexusOps is and how it works: an interactive, cursor-reactive "sensor-field" hero with a live mission-control console, the incident lifecycle timeline, the five-agent showcase, an architecture diagram, the self-improving RAG loop, the human-in-the-loop safety model, and the tech stack. Fully static — works with no backend.
+
+**Operator console (`/dashboard`, `/incidents`, `/pipeline`, `/agents`)** — the live control surface:
+
+- **Dashboard** — animated metric cards, a status-driven agent pipeline, the anomaly-score timeline, and a recent-incidents feed.
+- **Incidents** — searchable, status-filterable list with expandable detail (root cause, blast radius, proposed `kubectl` actions) and a one-click **HITL approve**.
+- **Pipeline** — per-incident view that derives each LangGraph stage's state from the incident's real status.
+- **Agents** — live per-agent status, derived stats, and recent activity.
+- **Global command search** (`/` hotkey), a real notification bell, and a system/account menu — all polling live data.
+
+The console talks to FastAPI through Next.js route handlers (`/api/*`) that normalize the backend schema. When no backend is connected (e.g. the public Vercel demo) it runs in **Demo Mode** — a self-contained, in-browser simulation that spawns incidents over time and advances each one through the full lifecycle (`detected → analyzing → awaiting_approval → executing → resolved`) on a clock, so visitors can watch the pipeline illuminate stage-by-stage. There's a **"Trigger incident"** button to spawn one on demand, and the HITL **Approve** action pushes an incident through remediation. A **Demo** badge labels it as simulated. Plug in a real backend and the same UI switches to live data unchanged.
+
+**Design:** a deliberately non-generic "mission-control" system — ink canvas, hairline borders, a single electric-lime signal accent, Space Grotesk / JetBrains Mono type, and a film-grain + grid texture.
+
+```bash
+# Run the web UI locally (from repo root)
+cd frontend
+npm install
+npm run dev            # http://localhost:3000
+
+# Point the console at a running backend (optional)
+# BACKEND_URL defaults to http://localhost:8000
+```
+
+Deploy on Vercel with **Root Directory = `frontend`** and Framework Preset **Next.js** — the landing site + Demo-Mode console deploy with **zero config** (Demo Mode is on by default when no backend is configured). For a fully live console, set `BACKEND_URL` (+ `NEXT_PUBLIC_BACKEND_URL`) to a hosted FastAPI URL, which automatically disables Demo Mode. To force either mode, set `NEXT_PUBLIC_DEMO_MODE=1` or `=0`.
+
 ## 📊 Phases
 
 - [x] **Phase 1** — Foundation: PyTorch + TensorFlow models, FastAPI gateway, synthetic simulator
 - [x] **Phase 2** — Multi-Agent: LangGraph orchestration, HITL approval, RAG memory loop
 - [x] **Phase 3** — Containerization: Dockerfile, multi-stage builds, docker-compose for full stack
 - [x] **Phase 4** — Kubernetes: Helm chart, K3s deployment, Prometheus + Grafana, real-data benchmark
-- [ ] **Phase 5** — Web UI: incident dashboard with real-time pipeline visualization
+- [x] **Phase 5** — Web UI: Next.js marketing site + operator console (dashboard, incidents, pipeline, agents), deployed on Vercel
 
 ## Limitations
 
@@ -289,7 +331,7 @@ if not resolved within ~30 minutes of trigger time.
 - Collect multi-day Prometheus exports with diurnal traffic cycles to give the LSTM enough temporal context to outperform statistical baselines.
 - Add a ServiceMonitor CRD and instrument the sample workloads with Prometheus client libraries to capture real request latency and error rate metrics.
 - Extend the Helm chart with HPA (Horizontal Pod Autoscaler) and PodDisruptionBudgets for production-grade resilience.
-- Build a web UI dashboard (Phase 5) with real-time incident pipeline visualization and approval workflow.
+- Connect the deployed Vercel console to a hosted FastAPI backend (it currently falls back to mock data in production) for a fully live, end-to-end demo.
 
 ---
 
