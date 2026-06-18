@@ -10,7 +10,7 @@ The problem space (autonomous SRE) genuinely interests me because in my current 
 
 > An autonomous multi-agent system that monitors cloud infrastructure, detects anomalies, diagnoses root causes, proposes fixes, and executes remediation actions with human approval.
 
-**🌐 Live demo:** **[nexusops-olive.vercel.app](https://nexusops-olive.vercel.app)** — interactive landing site + the operator console (Dashboard / Incidents / Pipeline / Agents). The console runs on representative mock data in production when no backend is connected.
+**🌐 Live demo:** **[nexusops-ai-sre.vercel.app](https://nexusops-ai-sre.vercel.app)** — interactive landing site + the operator console (Dashboard / Incidents / Pipeline / Agents). With no backend connected it runs in **Demo Mode**: incidents spawn and flow through the live pipeline on their own, and a "Trigger incident" button lets you drive it.
 
 ## Demo
 
@@ -25,7 +25,7 @@ The problem space (autonomous SRE) genuinely interests me because in my current 
 [![Helm](https://img.shields.io/badge/Helm-Chart-purple?logo=helm)](https://helm.sh)
 [![CI](https://github.com/ShashankS-02/nexusops/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/ShashankS-02/nexusops/actions)
 [![Next.js](https://img.shields.io/badge/Next.js-16-black?logo=nextdotjs)](https://nextjs.org)
-[![Vercel](https://img.shields.io/badge/Vercel-Live-black?logo=vercel)](https://nexusops-olive.vercel.app)
+[![Vercel](https://img.shields.io/badge/Vercel-Live-black?logo=vercel)](https://nexusops-ai-sre.vercel.app)
 
 ---
 
